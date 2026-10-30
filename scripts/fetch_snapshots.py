@@ -38,7 +38,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SOURCES_FILE = Path(__file__).resolve().parent / "sources.json"
 LOCAL_LANDING = REPO_ROOT / "data" / "landing"
 MANIFEST_FILE = REPO_ROOT / "data" / "manifest.json"
-USER_AGENT = "pipeline-intel-portfolio/0.1 (personal research)"
+USER_AGENT = "pipeline-incident-intelligence/0.1 (personal research)"
 WAYBACK_TS = re.compile(r"/web/(\d{8})\d*id_/")
 
 

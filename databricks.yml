@@ -1,7 +1,7 @@
 # Databricks Asset Bundle: Pipeline Incident Intelligence
 # Deploy:  databricks bundle validate && databricks bundle deploy -t dev
 bundle:
-  name: pipeline-intel
+  name: pipeline-incident-intelligence
 
 include:
   - resources/*.yml
