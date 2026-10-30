@@ -34,7 +34,7 @@ SOURCES = {
             "header": "true",
             "multiLine": "true",  # description fields can contain line breaks inside quotes
             "escape": '"',
-            "encoding": "UTF-8",  # switch to windows-1252 if accented French characters come out garbled
+            "encoding": "windows-1252",  # checked 2026-10-30: UTF-8 garbles names like "Ile des Chênes"
         },
     },
     "phmsa_liquid": {
