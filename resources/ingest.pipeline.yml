@@ -1,0 +1,14 @@
+resources:
+  pipelines:
+    incident_ingest:
+      name: incident_ingest
+      catalog: ${var.catalog}
+      schema: bronze
+      serverless: true
+      channel: CURRENT
+      # Week 1 = Bronze only. Silver (SCD2 from snapshots) is added to this pipeline in Week 2.
+      libraries:
+        - file:
+            path: ../src/pipelines/bronze.py
+      configuration:
+        landing_root: /Volumes/${var.catalog}/bronze/landing

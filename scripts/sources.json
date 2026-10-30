@@ -1,0 +1,25 @@
+{
+  "_comment": "Confirm every URL in a browser before the first run (Week 0). Source pages: CER https://open.canada.ca/data/en/dataset/fd17f08f-f14d-433f-91df-c90a34e1e9a6 ; PHMSA https://www.phmsa.dot.gov/data-and-statistics/pipeline/distribution-transmission-gathering-lng-and-liquid-accident-and-incident-data",
+  "cer": {
+    "files": [
+      {
+        "url": "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-data.csv",
+        "role": "data"
+      },
+      {
+        "url": "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-data-dictionary.csv",
+        "role": "dictionary"
+      }
+    ]
+  },
+  "phmsa_liquid": {
+    "files": [
+      {
+        "url": "https://www.phmsa.dot.gov/sites/phmsa.dot.gov/files/data_statistics/pipeline/accident_hazardous_liquid_jan2010_present.zip",
+        "role": "zip",
+        "data_glob": "*.txt",
+        "_comment": "Guessed URL pattern: copy the real link of 'Hazardous Liquid Accident Data - January 2010 to present' from the PHMSA page. The zip holds a field-description file and a tab-delimited data file; data_glob picks the data file."
+      }
+    ]
+  }
+}

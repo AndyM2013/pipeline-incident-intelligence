@@ -1,0 +1,20 @@
+# Databricks Asset Bundle: Pipeline Incident Intelligence
+# Deploy:  databricks bundle validate && databricks bundle deploy -t dev
+bundle:
+  name: pipeline-intel
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog catalog that holds every layer.
+    default: pipeline_intel
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      # Replace with your Free Edition workspace URL (copy it from the browser address bar).
+      host: https://REPLACE-ME.cloud.databricks.com
