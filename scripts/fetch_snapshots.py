@@ -8,6 +8,7 @@ Runs on your own machine (Free Edition notebooks can only reach a short list of 
                                                               # a historical copy from the Internet Archive,
                                                               # dated by the capture it actually returns
     python scripts/fetch_snapshots.py --no-upload             # download only, upload later
+    python scripts/fetch_snapshots.py --profile DEFAULT       # pick a CLI profile when several match the workspace
 
 Layout written locally under data/landing and mirrored to the Volume:
     <source>/<YYYY-MM-DD>/<file>                  data files read by the Bronze pipeline
@@ -117,9 +118,12 @@ def collect(source: str, spec: dict, wayback: str | None, today: str) -> list[La
     return landed
 
 
-def upload(local: Path, relative_path: str, catalog: str) -> None:
+def upload(local: Path, relative_path: str, catalog: str, profile: str | None = None) -> None:
     remote = f"dbfs:/Volumes/{catalog}/bronze/landing/{relative_path}"
-    subprocess.run(["databricks", "fs", "cp", str(local), remote, "--overwrite"], check=True)
+    cmd = ["databricks", "fs", "cp", str(local), remote, "--overwrite"]
+    if profile:
+        cmd += ["--profile", profile]
+    subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)  # never wait on an interactive prompt
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -127,6 +131,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source", action="append", help="Source key from sources.json (repeatable). Default: all.")
     parser.add_argument("--wayback", metavar="YYYYMMDD", help="Fetch the Internet Archive capture nearest this date.")
     parser.add_argument("--catalog", default="pipeline_intel")
+    parser.add_argument("--profile", help="Databricks CLI profile (from ~/.databrickscfg) used for uploads.")
     parser.add_argument("--no-upload", action="store_true", help="Write locally only.")
     parser.add_argument("--force", action="store_true", help="Land files even if identical content was seen before.")
     args = parser.parse_args(argv)
@@ -150,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
             local.parent.mkdir(parents=True, exist_ok=True)
             local.write_bytes(item.content)
             if not args.no_upload:
-                upload(local, item.relative_path, args.catalog)
+                upload(local, item.relative_path, args.catalog, args.profile)
             record(manifest, item)
             landed_count += 1
             print(f"landed {item.relative_path}  ({len(item.content):,} bytes)")
