@@ -120,10 +120,14 @@ def collect(source: str, spec: dict, wayback: str | None, today: str) -> list[La
 
 def upload(local: Path, relative_path: str, catalog: str, profile: str | None = None) -> None:
     remote = f"dbfs:/Volumes/{catalog}/bronze/landing/{relative_path}"
-    cmd = ["databricks", "fs", "cp", str(local), remote, "--overwrite"]
-    if profile:
-        cmd += ["--profile", profile]
-    subprocess.run(cmd, check=True, stdin=subprocess.DEVNULL)  # never wait on an interactive prompt
+    profile_args = ["--profile", profile] if profile else []
+    # `fs cp` does not create missing folders in a Volume; `fs mkdir` creates the whole path and is idempotent.
+    remote_dir = remote.rsplit("/", 1)[0]
+    for cmd in (
+        ["databricks", "fs", "mkdir", remote_dir],
+        ["databricks", "fs", "cp", str(local), remote, "--overwrite"],
+    ):
+        subprocess.run(cmd + profile_args, check=True, stdin=subprocess.DEVNULL)  # never wait on a prompt
 
 
 def main(argv: list[str] | None = None) -> int:

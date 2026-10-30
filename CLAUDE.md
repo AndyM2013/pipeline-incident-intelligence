@@ -38,3 +38,5 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
   ("Ile des Ch�nes"); it is windows-1252. Caught by inspecting the source before the first load, not after.
 - 2026-10-30 — Plan assumed CER "What Happened / Why It Happened" were narratives. They are coded category
   lists (median 21–24 characters). Caught by profiling value lengths and top values.
+- 2026-10-30 — Upload assumed `databricks fs cp` creates missing Volume folders. It does not
+  ("no such directory: …/cer/2026-10-30"). Fixed with `fs mkdir` first. Caught on the first real run.
