@@ -9,8 +9,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
       - run: pip install -r requirements-dev.txt
@@ -24,7 +24,14 @@ jobs:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Skip when Databricks secrets are not configured
+        if: env.DATABRICKS_TOKEN == ''
+        run: echo "::notice::DATABRICKS_HOST/DATABRICKS_TOKEN secrets not set; deploy from your machine or the workspace instead."
+      - uses: actions/checkout@v5
+        if: env.DATABRICKS_TOKEN != ''
       - uses: databricks/setup-cli@main
+        if: env.DATABRICKS_TOKEN != ''
       - run: databricks bundle validate -t dev
+        if: env.DATABRICKS_TOKEN != ''
       - run: databricks bundle deploy -t dev
+        if: env.DATABRICKS_TOKEN != ''
