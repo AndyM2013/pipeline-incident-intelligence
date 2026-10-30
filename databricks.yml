@@ -16,5 +16,5 @@ targets:
     mode: development
     default: true
     workspace:
-      # Replace with your Free Edition workspace URL (copy it from the browser address bar).
-      host: https://REPLACE-ME.cloud.databricks.com
+      # Databricks Free Edition workspace
+      host: https://dbc-7b9f8b12-ca31.cloud.databricks.com
