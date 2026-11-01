@@ -25,7 +25,7 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - Next: run check 5 in `sql/10_bronze_checks.sql` to see which CER columns caused the 1,651 "changes" on 2024-09-04,
   then design Week 2: Silver normalizes those columns first, then builds SCD2 from snapshots
   (`create_auto_cdc_from_snapshot_flow`, keys `incident_number` / `report_number`, `stored_as_scd_type=2`).
-- Plan with weekly checklist: "Lei Meng — AI-Era Data Engineering Development Plan" (Claude Docs), tab "Phase 2 project".
+- Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
 - Edit and commit on the Mac; GitHub `AndyM2013/pipeline-incident-intelligence` is the source of truth.
