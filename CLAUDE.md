@@ -27,9 +27,16 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - The CER data dictionary describes ~100 columns (pipe material, coating, inspection dates…) that the published CSV does not contain.
 - Consequence: narratives for extraction and retrieval come from PHMSA; CER supplies Canadian facts and a clean cause taxonomy.
 
+- CER history in Bronze (first load 2026-11-01): 5 snapshots, 1,655 -> 1,887 -> 1,923 -> 1,954 -> 2,034 rows; key unique in each.
+  New incidents per snapshot: 236, 36, 32, 81. Changed incidents: 1,651 (2024-09-04 — almost every row, likely a
+  format change, see check 5), then 140, 150, 34.
+- PHMSA hazardous liquid (2010–present): 6,052 rows, ~650 columns, key `report_number` (unique), `supplemental_number`
+  for report revisions. Narrative in `narrative`; coded causes in `cause` and `cause_details` (evaluation labels).
+- PHMSA contains personal contact fields: `preparer_*`, `local_contact_*`, `authorizer_*` (names, emails, phones).
+  Public data, but they never leave Bronze: Silver selects explicit columns and excludes them; never embedded or sent to an LLM.
+
 ## Open questions (update as answered)
-- PHMSA key column (expected `REPORT_NUMBER`) and narrative column (expected `NARRATIVE`): confirm from the zip's field description.
-- PHMSA file encoding and quoting.
+- Why did 1,651 of 1,655 CER incidents change between 2022-09-14 and 2024-09-04? Run check 5 in `sql/10_bronze_checks.sql`.
 - Does `ai_query` reach a pay-per-token model in this workspace?
 
 ## Agent review log
@@ -42,4 +49,5 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
   ("no such directory: …/cer/2026-10-30"). Fixed with `fs mkdir` first. Caught on the first real run.
 - 2026-11-01 — Column cleaner turned Auto Loader's `_rescued_data` into `rescued_data`, so the expectation
   `_rescued_data IS NULL` failed with UNRESOLVED_COLUMN on the first pipeline run. Unit tests had no system
-  column in their inputs. Fixed by keeping system columns verbatim; regression test added.
+  column in their inputs. Fixed by keeping system columns verbatim; regression test added. The failed run left a
+  stray `rescued_data` column in both tables; removed with a full refresh, which also proved Bronze rebuilds from the Volume.

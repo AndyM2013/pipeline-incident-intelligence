@@ -53,3 +53,31 @@ LEFT JOIN s prev
 GROUP BY cur._snapshot_date
 ORDER BY cur._snapshot_date;
 -- Rows that vanish between snapshots (deleted or re-keyed incidents) are the third case to check in Week 2.
+
+-- 5. Which columns changed between consecutive CER snapshots?
+--    Separates real incident updates (status, volume, cause) from format changes in the publication.
+WITH snaps AS (
+  SELECT _snapshot_date, row_number() OVER (ORDER BY _snapshot_date) AS seq
+  FROM (SELECT DISTINCT _snapshot_date FROM pipeline_intel.bronze.cer_incident_raw)
+),
+cells AS (
+  SELECT r.incident_number, n.seq, n._snapshot_date, kv.key AS col, kv.value AS val
+  FROM pipeline_intel.bronze.cer_incident_raw r
+  JOIN snaps n USING (_snapshot_date)
+  LATERAL VIEW explode(
+    from_json(to_json(struct(r.* EXCEPT (_snapshot_date, _source_file, _ingested_at, _rescued_data))),
+              'map<string,string>')
+  ) kv AS key, value
+)
+SELECT cur._snapshot_date, cur.col,
+       count(*) AS incidents_changed,
+       any_value(prev.val) AS example_before,
+       any_value(cur.val)  AS example_after
+FROM cells cur
+JOIN cells prev
+  ON prev.incident_number = cur.incident_number
+ AND prev.col = cur.col
+ AND prev.seq = cur.seq - 1
+WHERE NOT (prev.val <=> cur.val)
+GROUP BY cur._snapshot_date, cur.col
+ORDER BY cur._snapshot_date, incidents_changed DESC;
