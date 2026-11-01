@@ -7,6 +7,8 @@ Personal portfolio project on Databricks Free Edition: CER + PHMSA pipeline inci
 - Bronze keeps every source column as text. Types, units and keys are applied in Silver, never in Bronze.
 - Every layer is rebuildable from the landing Volume. Never hand-edit tables.
 - Snapshots are dated by folder (`<source>/<YYYY-MM-DD>/`); history comes from snapshot diffs, not from guessing.
+- Auto Loader tracks files by path and reads each path once. Never overwrite a file in an already-loaded date folder
+  (it would be silently ignored); land changed content in a new date folder, or full-refresh Bronze.
 - LLM outputs always carry model name, prompt version and confidence; never overwrite an earlier version's rows.
 - Agent tools are read-only. Anything that would write proposes, never executes.
 - No client data, ever. Free Edition is non-commercial.
