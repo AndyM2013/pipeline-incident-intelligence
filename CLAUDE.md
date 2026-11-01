@@ -40,3 +40,6 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
   lists (median 21–24 characters). Caught by profiling value lengths and top values.
 - 2026-10-30 — Upload assumed `databricks fs cp` creates missing Volume folders. It does not
   ("no such directory: …/cer/2026-10-30"). Fixed with `fs mkdir` first. Caught on the first real run.
+- 2026-11-01 — Column cleaner turned Auto Loader's `_rescued_data` into `rescued_data`, so the expectation
+  `_rescued_data IS NULL` failed with UNRESOLVED_COLUMN on the first pipeline run. Unit tests had no system
+  column in their inputs. Fixed by keeping system columns verbatim; regression test added.

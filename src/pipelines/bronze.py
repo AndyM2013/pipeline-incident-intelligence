@@ -58,11 +58,15 @@ def snake_case(name: str) -> str:
     return f"c_{cleaned}" if cleaned[0].isdigit() else cleaned
 
 
+# Columns Auto Loader adds itself. They keep their exact names: expectations and checks refer to them.
+SYSTEM_COLUMNS = {"_rescued_data"}
+
+
 def unique_names(names: list[str]) -> list[str]:
     seen: dict[str, int] = {}
     out = []
     for n in names:
-        base = snake_case(n)
+        base = n if n in SYSTEM_COLUMNS else snake_case(n)
         seen[base] = seen.get(base, 0) + 1
         out.append(base if seen[base] == 1 else f"{base}_{seen[base]}")
     return out
