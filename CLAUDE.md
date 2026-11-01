@@ -19,6 +19,23 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - Deploy: `databricks bundle deploy -t dev`
 - Run ingest: `databricks bundle run incident_ingest`
 
+## Current status (update at the end of every session)
+- 2026-11-01: Week 1 done. Bronze loaded for CER (5 snapshots via Internet Archive + live) and PHMSA (1 snapshot);
+  full refresh proved Bronze rebuilds from the Volume. Work moves from claude.ai chat to Claude Code in VS Code.
+- Next: run check 5 in `sql/10_bronze_checks.sql` to see which CER columns caused the 1,651 "changes" on 2024-09-04,
+  then design Week 2: Silver normalizes those columns first, then builds SCD2 from snapshots
+  (`create_auto_cdc_from_snapshot_flow`, keys `incident_number` / `report_number`, `stored_as_scd_type=2`).
+- Plan with weekly checklist: "Lei Meng — AI-Era Data Engineering Development Plan" (Claude Docs), tab "Phase 2 project".
+
+## Workflow
+- Edit and commit on the Mac; GitHub `AndyM2013/pipeline-incident-intelligence` is the source of truth.
+- `databricks bundle deploy` uploads to `/Workspace/Users/menglei1025@gmail.com/.bundle/pipeline-incident-intelligence/dev/files`.
+  That copy is what the pipeline runs; open SQL files there, never edit them there.
+- No workspace Git folder: Free Edition's Git CLI preview causes `.git` Input/output errors and cannot be turned off.
+- CLI uses the single `DEFAULT` profile in `~/.databrickscfg`. Workspace: https://dbc-7b9f8b12-ca31.cloud.databricks.com
+- Claude Code may run `pytest`, `databricks bundle validate/deploy/run`, and read-only SQL via `databricks` CLI.
+  Ask before anything that deletes data, drops tables, or runs a full refresh.
+
 ## Source facts (checked 2026-10-30)
 - CER CSV: 2,034 incidents, 16 columns, years 2008–2026, encoding windows-1252, no ragged rows.
 - CER key: `Incident Number` (unique per row) -> `incident_number` in Bronze.
