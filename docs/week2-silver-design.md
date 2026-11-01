@@ -16,8 +16,10 @@ Status: design, 2026-11-01. Facts below come from profiling `bronze.cer_incident
 | `latitude`, `longitude`, `approximate_volume_released_m3`, `significant`, `company`, `nearest_populated_centre` | Corrections, e.g. volume 2,400,000 -> 5.98 m³; NOVA -> NGTL rename. | Real |
 
 Other facts:
-- 6 incidents disappear between snapshots (INC2022-104/126/136/151 after 2022-09-14, INC2024-095, INC2025-055).
+- 5 incidents disappear for good (INC2022-104/126/136/151 after 2022-09-14, INC2025-055 after 2025-09-01).
   All were Submitted or Initially Submitted when last seen, so they look like withdrawn reports.
+- 1 incident disappears and comes back: INC2024-095 is missing from 2025-09-01 and back as Closed in 2026-10-30.
+  (First counted as a deletion: the profiling query compared only neighbouring snapshots. SCD2 showed the gap.)
 - `incident_number` always matches `INC9999-999`.
 - Volume is a number, "Not Applicable" (no release) or "Not Provided".
 - `release_type` and `substance` use "Not Applicable" when nothing was released.
@@ -96,8 +98,8 @@ dp.create_auto_cdc_from_snapshot_flow(
 - **Version:** the snapshot date as an int `yyyymmdd`. The docs only show int versions. `__START_AT` / `__END_AT` are
   then the snapshot where a version was *first seen*, not when the regulator changed it. Document this; it is the
   honest limit of snapshot CDC.
-- **Deletes:** keys missing from a later snapshot get closed. The 6 withdrawn incidents should come out as rows
-  with `__END_AT` set and no later version.
+- **Deletes:** keys missing from a later snapshot get closed. The 5 withdrawn incidents come out as rows with
+  `__END_AT` set and no later version; INC2024-095 has a gap between two versions.
 - **Lineage:** `_snapshot_date` is carried but not tracked. If it were tracked, every incident would get a new
   version in every snapshot.
 
@@ -115,10 +117,10 @@ download produces history without new code.
 
 1. Rows per snapshot in `cer_incident_snapshot` equal Bronze: 1,655 / 1,887 / 1,923 / 1,954 / 2,034.
 2. Check 5 rerun on `cer_incident_snapshot`: `reported_date` and `incident_types` no longer appear.
-3. Versions per snapshot in `cer_incident`: about 40 at 2024-09-04 (not 1,651) and about 30 in each 2025 snapshot
-   (not 140/150). Exact numbers are whatever check 2 leaves.
+3. Versions opened per snapshot in `cer_incident` = new + changed from check 2b: 1,655 / 281 / 58 / 60 / 115.
 4. Current rows (`__END_AT IS NULL`) = 2,034.
-5. Closed with no successor = exactly the 6 incidents above. This is the deleted-incident report.
+5. Closed with no successor = exactly the 5 withdrawn incidents. This is the deleted-incident report.
+   5b. Gaps between versions = INC2024-095 only.
 6. No PHMSA personal-contact column exists in any `silver` table (`information_schema.columns`).
 
 ## Tests
@@ -139,6 +141,7 @@ download produces history without new code.
 
 - ~~Whether a pipeline whose default schema is `bronze` can publish `silver.*` by name.~~ Yes (update d449b4,
   2026-11-01), and `spark.read.table("cer_incident_raw")` makes the view wait for Bronze.
-- Whether `__START_AT` holds the int version as expected.
+- ~~Whether `__START_AT` holds the int version as expected.~~ Yes: `__START_AT` / `__END_AT` are int `yyyymmdd`.
+  One update of `incident_history` replayed all 5 snapshots (job run 503105846552935, 2026-11-01).
 - The first call of the snapshot function must return a snapshot. If there are none, the update fails, which is the
   correct outcome for an empty Volume.

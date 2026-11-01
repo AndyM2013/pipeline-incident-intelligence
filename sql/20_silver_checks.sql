@@ -66,3 +66,35 @@ LEFT JOIN s prev
  AND prev.seq = cur.seq - 1
 GROUP BY cur._snapshot_date
 ORDER BY cur._snapshot_date;
+
+-- 3. Versions SCD2 opened per snapshot. Expect new + changed from check 2b:
+--    20220914: 1,655  20240904: 281  20250318: 58  20250901: 60  20261030: 115.
+SELECT __START_AT AS snapshot_version, count(*) AS versions_opened
+FROM pipeline_intel.silver.cer_incident
+GROUP BY 1
+ORDER BY 1;
+
+-- 4. Current incidents equal the latest snapshot. Expect 2,034.
+SELECT count(*) AS current_incidents
+FROM pipeline_intel.silver.cer_incident
+WHERE __END_AT IS NULL;
+
+-- 5. Deleted incidents: closed, with no current version. Expect 5:
+--    INC2022-104/126/136/151 (gone in 20240904), INC2025-055 (gone in 20261030).
+SELECT incident_number, max(__END_AT) AS gone_in_snapshot, max_by(status, __START_AT) AS last_status,
+       max_by(company, __START_AT) AS company
+FROM pipeline_intel.silver.cer_incident
+GROUP BY incident_number
+HAVING count_if(__END_AT IS NULL) = 0
+ORDER BY gone_in_snapshot, incident_number;
+
+-- 5b. Incidents that left the publication and came back: a gap between two versions. Expect 1:
+--     INC2024-095, missing from 20250901, back as Closed in 20261030.
+SELECT incident_number, __END_AT AS gone_in_snapshot, next_start AS back_in_snapshot
+FROM (
+  SELECT incident_number, __START_AT, __END_AT,
+         lead(__START_AT) OVER (PARTITION BY incident_number ORDER BY __START_AT) AS next_start
+  FROM pipeline_intel.silver.cer_incident
+)
+WHERE next_start > __END_AT
+ORDER BY 1;

@@ -26,8 +26,11 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - 2026-11-01: Week 2 step 1 done. `silver.cer_incident_snapshot` (MV in `incident_ingest`) normalizes CER; rows match
   Bronze per snapshot, all 11 expectations pass on 9,453 rows. Changed incidents per snapshot drop from
   1,651 / 140 / 150 / 34 (raw) to 45 / 22 / 28 / 34: only status, causes, coordinates, volume, company remain.
-- Next: Week 2 step 2 in `docs/week2-silver-design.md`: `incident_history` pipeline with SCD2 from those snapshots,
-  `incident_refresh` job, then `sql/20_silver_checks.sql` checks 3-5 (expect 2,034 current rows, 6 closed incidents).
+- 2026-11-01: Week 2 step 2 done. `incident_history` pipeline builds `silver.cer_incident` (SCD2, version = int
+  yyyymmdd); `incident_refresh` job runs ingest then history (`databricks bundle run incident_refresh`).
+  Versions per snapshot 1,655 / 281 / 58 / 60 / 115; 2,034 current; 5 withdrawn incidents; INC2024-095 has a gap.
+- Next: Week 2 step 4: profile PHMSA's ~650 columns, choose the Silver column list (no personal contact fields),
+  then `phmsa_incident_snapshot` + `phmsa_incident` and check 6.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -78,3 +81,6 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
   changes vanished in the inner join on column name; caught by reading the query before running it, fixed with
   `ignoreNullFields=false`. (2) `r.*` inside `LATERAL VIEW explode(...)` fails with INVALID_USAGE_OF_STAR_OR_REGEX;
   the query had never been run. Caught on the first run, fixed by building the map in a CTE first.
+- 2026-11-01 — Profiling said 6 CER incidents were deleted; the SCD2 check found 5. The "vanished" query compared
+  only neighbouring snapshots, so INC2024-095 (missing from 2025-09-01, back in 2026-10-30) looked deleted.
+  Caught by the acceptance check disagreeing with the design doc; added check 5b for gaps.

@@ -1,0 +1,15 @@
+resources:
+  jobs:
+    incident_refresh:
+      name: incident_refresh
+      # Ingest, then history. Never concurrent, so Free Edition's one-active-pipeline limit holds.
+      # No schedule: snapshots arrive when scripts/fetch_snapshots.py uploads them.
+      tasks:
+        - task_key: ingest
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.incident_ingest.id}
+        - task_key: history
+          depends_on:
+            - task_key: ingest
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.incident_history.id}

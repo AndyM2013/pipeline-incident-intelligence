@@ -59,3 +59,14 @@ def test_every_expectation_names_an_output_column():
     }
     for name, sql in ns["CER_EXPECTATIONS"].items():
         assert any(col in sql for col in output), name
+
+
+def test_history_version_is_the_snapshot_date_as_yyyymmdd():
+    from datetime import date
+
+    tree = ast.parse((SRC.parent / "history.py").read_text())
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "version_of")
+    hist: dict = {"date": date}  # the annotation is evaluated at definition time
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[fn], type_ignores=[])), "history.py", "exec"), hist)
+    assert hist["version_of"](date(2024, 9, 4)) == 20240904
+    assert hist["version_of"](date(2022, 9, 14)) < hist["version_of"](date(2024, 9, 4))
