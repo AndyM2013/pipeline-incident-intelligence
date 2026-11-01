@@ -60,14 +60,18 @@ WITH snaps AS (
   SELECT _snapshot_date, row_number() OVER (ORDER BY _snapshot_date) AS seq
   FROM (SELECT DISTINCT _snapshot_date FROM pipeline_intel.bronze.cer_incident_raw)
 ),
-cells AS (
-  SELECT r.incident_number, n.seq, n._snapshot_date, kv.key AS col, kv.value AS val
+rows_as_maps AS (  -- built here because '*' is not allowed inside explode()
+  SELECT r.incident_number, n.seq, n._snapshot_date,
+         from_json(to_json(struct(r.* EXCEPT (_snapshot_date, _source_file, _ingested_at, _rescued_data)),
+                           map('ignoreNullFields', 'false')),  -- keep nulls so value <-> null changes are counted
+                   'map<string,string>') AS m
   FROM pipeline_intel.bronze.cer_incident_raw r
   JOIN snaps n USING (_snapshot_date)
-  LATERAL VIEW explode(
-    from_json(to_json(struct(r.* EXCEPT (_snapshot_date, _source_file, _ingested_at, _rescued_data))),
-              'map<string,string>')
-  ) kv AS key, value
+),
+cells AS (
+  SELECT incident_number, seq, _snapshot_date, kv.key AS col, kv.value AS val
+  FROM rows_as_maps
+  LATERAL VIEW explode(m) kv AS key, value
 )
 SELECT cur._snapshot_date, cur.col,
        count(*) AS incidents_changed,
