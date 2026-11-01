@@ -67,13 +67,13 @@ layer rebuilds from the landing Volume.
 | `significant` | boolean | Yes/No. |
 | `_snapshot_date` | date | Lineage. Not tracked for history. |
 
-Dropped: `year` (derived from `reported_date`; an expectation checks they agree first).
+Dropped: `year` (derived from `reported_date`; `sql/20_silver_checks.sql` checks they agree against Bronze).
 
 Sorted arrays make the comparison ignore list order, so reordering a list is not a change.
 
 Expectations (warn, so failures are counted but rows are kept, like Bronze):
 - `incident_number` not null and matches `^INC\d{4}-\d{3}$` (fail the update if null: the key must exist).
-- `reported_date` not null and `year(reported_date) = year`.
+- `reported_date` not null.
 - `status IN ('Initially Submitted', 'Submitted', 'Closed')`.
 - `latitude BETWEEN 41 AND 84`, `longitude BETWEEN -142 AND -52`.
 - `volume_reported = 'reported'` implies `volume_released_m3 >= 0`.
@@ -137,8 +137,8 @@ download produces history without new code.
 
 ## To verify while building
 
-- Whether a pipeline whose default schema is `bronze` can publish `silver.*` by name. If not, give Silver its own
-  default schema in the history pipeline and move the snapshot views there.
+- ~~Whether a pipeline whose default schema is `bronze` can publish `silver.*` by name.~~ Yes (update d449b4,
+  2026-11-01), and `spark.read.table("cer_incident_raw")` makes the view wait for Bronze.
 - Whether `__START_AT` holds the int version as expected.
 - The first call of the snapshot function must return a snapshot. If there are none, the update fails, which is the
   correct outcome for an empty Volume.

@@ -23,9 +23,11 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - 2026-11-01: Week 1 done. Bronze loaded for CER (5 snapshots via Internet Archive + live) and PHMSA (1 snapshot);
   full refresh proved Bronze rebuilds from the Volume. Work moves from claude.ai chat to Claude Code in VS Code.
 - 2026-11-01: Check 5 run (CLI and SQLTools in VS Code agree): the 2024-09-04 spike is a `reported_date` format change.
-- Next: design Week 2. Silver normalizes `reported_date` (both formats -> DATE), `incident_types` and `status` labels,
-  and "To be determined" causes -> null; then builds SCD2 from snapshots
-  (`create_auto_cdc_from_snapshot_flow`, keys `incident_number` / `report_number`, `stored_as_scd_type=2`).
+- 2026-11-01: Week 2 step 1 done. `silver.cer_incident_snapshot` (MV in `incident_ingest`) normalizes CER; rows match
+  Bronze per snapshot, all 11 expectations pass on 9,453 rows. Changed incidents per snapshot drop from
+  1,651 / 140 / 150 / 34 (raw) to 45 / 22 / 28 / 34: only status, causes, coordinates, volume, company remain.
+- Next: Week 2 step 2 in `docs/week2-silver-design.md`: `incident_history` pipeline with SCD2 from those snapshots,
+  `incident_refresh` job, then `sql/20_silver_checks.sql` checks 3-5 (expect 2,034 current rows, 6 closed incidents).
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow

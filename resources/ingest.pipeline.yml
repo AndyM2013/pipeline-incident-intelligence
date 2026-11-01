@@ -6,9 +6,12 @@ resources:
       schema: bronze
       serverless: true
       channel: CURRENT
-      # Week 1 = Bronze only. Silver (SCD2 from snapshots) is added to this pipeline in Week 2.
+      # Bronze plus the normalized Silver snapshot views. SCD2 history is built by a separate pipeline
+      # (see docs/week2-silver-design.md), because its snapshot function reads these views.
       libraries:
         - file:
             path: ../src/pipelines/bronze.py
+        - file:
+            path: ../src/pipelines/silver.py
       configuration:
         landing_root: /Volumes/${var.catalog}/bronze/landing
