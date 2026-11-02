@@ -70,3 +70,42 @@ def test_history_version_is_the_snapshot_date_as_yyyymmdd():
     exec(compile(ast.fix_missing_locations(ast.Module(body=[fn], type_ignores=[])), "history.py", "exec"), hist)
     assert hist["version_of"](date(2024, 9, 4)) == 20240904
     assert hist["version_of"](date(2022, 9, 14)) < hist["version_of"](date(2024, 9, 4))
+
+
+PHMSA_MAPS = ["PHMSA_TEXT", "PHMSA_INT", "PHMSA_DECIMAL", "PHMSA_FLAG", "PHMSA_TIMESTAMP"]
+
+
+def phmsa_sources():
+    for m in PHMSA_MAPS:
+        for src in ns[m].values():
+            yield src[0] if isinstance(src, tuple) else src
+
+
+def test_no_personal_contact_column_reaches_phmsa_silver():
+    contact = ("preparer_", "local_contact_", "authorizer_", "operator_street", "operator_postal", "operator_city")
+    leaked = [s for s in phmsa_sources() if s.startswith(contact) or s == "prepared_date"]
+    assert leaked == []
+
+
+def test_phmsa_silver_names_are_unique():
+    names = [n for m in PHMSA_MAPS for n in ns[m]] + ["report_received_date", "narrative", "_snapshot_date"]
+    assert len(names) == len(set(names))
+
+
+def redact(text):
+    text = re.sub(ns["EMAIL_PATTERN"], "[EMAIL]", text)
+    return re.sub(ns["PHONE_PATTERN"], "[PHONE]", text)
+
+
+def test_redaction_catches_contact_shapes_seen_in_narratives():
+    # Shapes from the 2026-10-30 snapshot, with made-up digits and address.
+    assert redact("REPORTS SPILL TO TXRRC (512) 463-6788 AND") == "REPORTS SPILL TO TXRRC [PHONE] AND"
+    assert redact("LA STATE POLICE 225-925-6595 REPORT") == "LA STATE POLICE [PHONE] REPORT"
+    assert redact("CALLED NRC (800-424-8802) AND") == "CALLED NRC ([PHONE]) AND"
+    assert redact("OFFICE 713.369.9000 FAX") == "OFFICE [PHONE] FAX"
+    assert redact("contact j.doe@example.com today") == "contact [EMAIL] today"
+
+
+def test_redaction_leaves_report_facts_alone():
+    for text in ["NRC1234567 AT 7/16/2011 19:40", "RELEASED 1,234.56 BBLS", "REPORT # 12-34567", "MP 123.4 TO 456.7"]:
+        assert redact(text) == text

@@ -56,7 +56,7 @@ PHMSA includes personal contact fields (`preparer_*`, `local_contact_*`, `author
 
 - [x] **Week 0 — spike.** Sources confirmed and profiled; catalog, schemas and landing Volume created. Still open: does `ai_query` reach a pay-per-token model in this workspace?
 - [x] **Week 1 — ingest to Bronze.** Asset Bundle, local fetch script with Internet Archive history, Auto Loader pipeline, acceptance checks. CER: 5 snapshots (2022-09-14 to 2026-10-30). PHMSA: 6,052 rows.
-- [ ] **Week 2 — Silver and CDC.** Explain the 2024-09-04 change spike (check 5), normalize those columns, then SCD2 from snapshots (`create_auto_cdc_from_snapshot_flow`, `stored_as_scd_type=2`). Expectations on dates, units and nulls. Report on deleted or re-keyed incidents.
+- [x] **Week 2 — Silver and CDC.** Explain the 2024-09-04 change spike (check 5), normalize those columns, then SCD2 from snapshots (`create_auto_cdc_from_snapshot_flow`, `stored_as_scd_type=2`). Expectations on dates, units and nulls. Report on deleted or re-keyed incidents.
 - [ ] **Week 3 — conformance and reconciliation.** Cause taxonomy mapping, unit conversion, operator resolution. Reconcile counts by year and province/state against the regulators' published summaries.
 - [ ] **Weeks 4–5 — LLM extraction.** `ai_query` over PHMSA narratives into a JSON schema checked by deterministic validators; model and prompt version on every row; incremental re-runs only.
 - [ ] **Weeks 5–6 — extraction evaluation.** Extracted vs coded cause; confusion matrix; one MLflow run per prompt version; the accuracy figure is the headline number.

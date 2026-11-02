@@ -31,8 +31,10 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - 2026-11-01: Week 2 step 2 done. `incident_history` pipeline builds `silver.cer_incident` (SCD2, version = int
   yyyymmdd); `incident_refresh` job runs ingest then history (`databricks bundle run incident_refresh`).
   Versions per snapshot 1,655 / 281 / 58 / 60 / 115; 2,034 current; 5 withdrawn incidents; INC2024-095 has a gap.
-- Next: Week 2 step 4: profile PHMSA's ~650 columns, choose the Silver column list (no personal contact fields),
-  then `phmsa_incident_snapshot` + `phmsa_incident` and check 6.
+- 2026-11-02: Week 2 done. `silver.phmsa_incident_snapshot` (62 columns incl. pipe attributes, no contact fields,
+  emails/phones in narratives redacted) and `silver.phmsa_incident` (SCD2, 6,052 versions). Checks 6-8 pass.
+- Next: Week 3 (conformance): cause taxonomy mapping, barrels -> m³, operator resolution, reconciliation.
+  First answer the `ai_query` question: it also decides the `ai_mask` name-redaction pass.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -59,13 +61,16 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   for report revisions. Narrative in `narrative`; coded causes in `cause` and `cause_details` (evaluation labels).
 - PHMSA contains personal contact fields: `preparer_*`, `local_contact_*`, `authorizer_*` (names, emails, phones).
   Public data, but they never leave Bronze: Silver selects explicit columns and excludes them; never embedded or sent to an LLM.
+- PHMSA narratives quote contact details too (10 emails, 12 phone numbers, people's names). Silver redacts emails
+  and phones. Names need an `ai_mask` pass; until then LLM extraction and Vector Search must not read
+  `silver.phmsa_incident*.narrative`. 31 reports have no narrative.
 
 ## Open questions (update as answered)
 - ~~Why did 1,651 of 1,655 CER incidents change between 2022-09-14 and 2024-09-04?~~ Answered 2026-11-01 by check 5:
   `reported_date` changed format from `01/02/2008` to `1/2/2008 12:00:00 AM` in all 1,651 rows. Most of the 140 and 150
   changes in 2025 are `incident_types` relabels ("Serious Injury (CER or TSB)" -> "(CER)" -> "(as defined in the OPR)").
   Real updates are `status`, causes moving from "To be determined" to a code, coordinates, volume corrections, company renames.
-- Does `ai_query` reach a pay-per-token model in this workspace?
+- Does `ai_query` reach a pay-per-token model in this workspace? Also decides whether `ai_mask` can redact names in narratives.
 
 ## Agent review log
 Record each time generated code needed a fix: what was wrong, how it was caught. This is interview material.
@@ -86,3 +91,6 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
 - 2026-11-01 — Profiling said 6 CER incidents were deleted; the SCD2 check found 5. The "vanished" query compared
   only neighbouring snapshots, so INC2024-095 (missing from 2025-09-01, back in 2026-10-30) looked deleted.
   Caught by the acceptance check disagreeing with the design doc; added check 5b for gaps.
+- 2026-11-02 — Profiling found 1 email in PHMSA narratives; the Silver redaction replaced 10. The profiling regex
+  ended in `[a-z]{2,}`, so upper-case addresses ("...@KINDERMORGAN.COM") never matched. Caught because check 6b
+  counted redactions instead of only checking that none were left. Lesson: count both sides of a filter.

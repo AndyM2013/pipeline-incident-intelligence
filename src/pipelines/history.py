@@ -24,6 +24,7 @@ except ImportError:  # older runtimes
 # target table in this pipeline's schema -> (snapshot view, keys)
 HISTORIES = {
     "cer_incident": ("cer_snapshot_table", ["incident_number"]),
+    "phmsa_incident": ("phmsa_snapshot_table", ["report_number"]),
 }
 
 

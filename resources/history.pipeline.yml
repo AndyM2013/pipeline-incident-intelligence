@@ -12,3 +12,4 @@ resources:
             path: ../src/pipelines/history.py
       configuration:
         cer_snapshot_table: ${var.catalog}.silver.cer_incident_snapshot
+        phmsa_snapshot_table: ${var.catalog}.silver.phmsa_incident_snapshot

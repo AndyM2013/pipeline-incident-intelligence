@@ -98,3 +98,43 @@ FROM (
 )
 WHERE next_start > __END_AT
 ORDER BY 1;
+
+-- 6. No personal contact column in any Silver table. Expect no rows.
+SELECT table_name, column_name
+FROM pipeline_intel.information_schema.columns
+WHERE table_schema = 'silver'
+  AND (column_name LIKE 'preparer%' OR column_name LIKE 'local_contact%' OR column_name LIKE 'authorizer%'
+       OR column_name IN ('prepared_date', 'operator_street_address', 'operator_postal_code', 'operator_city_name'));
+
+-- 6b. Narrative redaction. Expect residual_email = 0 and residual_phone = 0;
+--     redacted_email = 1 and redacted_phone >= 7 in the 2026-10-30 snapshot.
+--     Names are NOT redacted here (ai_mask pass before any LLM or Vector Search use).
+SELECT _snapshot_date,
+       count_if(narrative RLIKE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}') AS residual_email,
+       count_if(narrative RLIKE '([(][0-9]{3}[)] ?|[0-9]{3}[-. ])[0-9]{3}[-.][0-9]{4}') AS residual_phone,
+       sum(size(split(narrative, '\\[EMAIL\\]')) - 1) AS redacted_email,
+       sum(size(split(narrative, '\\[PHONE\\]')) - 1) AS redacted_phone
+FROM pipeline_intel.silver.phmsa_incident_snapshot
+GROUP BY 1;
+
+-- 7. PHMSA rows match Bronze, and nothing parseable was lost. Expect diff = 0 and every *_lost = 0.
+--    ("UNKNOWN" in year and pipe columns is a legitimate null.)
+SELECT s._snapshot_date, count(*) AS silver_rows,
+       any_value(r.bronze_rows) - count(*) AS diff,
+       count_if(b.installation_year IS NOT NULL AND b.installation_year <> 'UNKNOWN' AND s.installation_year IS NULL) AS install_year_lost,
+       count_if(b.pipe_diameter IS NOT NULL AND b.pipe_diameter <> 'UNKNOWN' AND s.pipe_diameter_in IS NULL) AS diameter_lost,
+       count_if(b.unintentional_release_bbls IS NOT NULL AND s.unintentional_release_bbls IS NULL) AS volume_lost,
+       count_if(b.prpty IS NOT NULL AND s.total_cost_usd IS NULL) AS cost_lost,
+       count_if(b.incident_identified_datetime IS NOT NULL AND s.identified_datetime IS NULL) AS identified_lost,
+       count_if(b.restart_datetime IS NOT NULL AND s.restart_datetime IS NULL) AS restart_lost
+FROM pipeline_intel.silver.phmsa_incident_snapshot s
+JOIN pipeline_intel.bronze.phmsa_liquid_raw b USING (report_number, _snapshot_date)
+JOIN (SELECT _snapshot_date, count(*) AS bronze_rows FROM pipeline_intel.bronze.phmsa_liquid_raw GROUP BY 1) r
+  USING (_snapshot_date)
+GROUP BY 1;
+
+-- 8. PHMSA history: one version per report after the first snapshot. Expect 20261030: 6,052 versions, 6,052 current.
+SELECT __START_AT AS snapshot_version, count(*) AS versions_opened, count_if(__END_AT IS NULL) AS current_versions
+FROM pipeline_intel.silver.phmsa_incident
+GROUP BY 1
+ORDER BY 1;

@@ -100,8 +100,8 @@ dp.create_auto_cdc_from_snapshot_flow(
   honest limit of snapshot CDC.
 - **Deletes:** keys missing from a later snapshot get closed. The 5 withdrawn incidents come out as rows with
   `__END_AT` set and no later version; INC2024-095 has a gap between two versions.
-- **Lineage:** `_snapshot_date` is carried but not tracked. If it were tracked, every incident would get a new
-  version in every snapshot.
+- **Lineage:** `_snapshot_date` is dropped before the diff (`__START_AT` already says which snapshot). Kept, it would
+  differ in every snapshot and make every incident a new version each time.
 
 ## PHMSA
 
@@ -109,9 +109,72 @@ One snapshot so far, so its SCD2 table has one version per report. Build it the 
 download produces history without new code.
 - `silver.phmsa_incident_snapshot` selects an explicit list of columns, never `*`. That keeps `preparer_*`,
   `local_contact_*` and `authorizer_*` out of Silver.
-- Choosing that list (dates, location, operator, commodity, volumes, `cause`, `cause_details`, `narrative`) needs its
-  own profiling pass over the ~650 columns. That is step 4 below.
 - Key `report_number`. `supplemental_number` is tracked, so a revised report becomes a new version.
+
+### PHMSA profile (2026-10-30 snapshot, profiled 2026-11-01)
+
+- 6,052 rows = 6,052 distinct `report_number` (8 digits, `YYYY` + sequence). Accident years 2010–2026.
+- 648 columns, but most are cause- or equipment-specific detail: 507 are under 20% filled, 358 under 2%.
+  83 are over 80% filled.
+- `report_type`: SUPPLEMENTAL FINAL 4,475, ORIGINAL FINAL 1,336, ORIGINAL 121, SUPPLEMENTAL 120. The 241 non-final
+  reports are where future snapshots will show changes.
+- `cause`: 8 values; `cause_details`: 41 values, some with trailing spaces ("OTHER INCORRECT OPERATION ").
+  Both 100% filled: the evaluation labels.
+- Dates are `M/d/yyyy` (`report_received_date`) and `M/d/yyyy H:mm` (`local_datetime`, 24-hour). Volumes in barrels
+  with up to 2 decimals; costs in whole dollars; `fatal` / `injure` are totals (the `num_*` breakdowns are ~0% filled).
+- **The narrative contains contact details.** 1 email address (an operator employee) and 7 phone numbers
+  (regulators' and operators' lines, one office address block), plus people's names ("... CALLED NRC ...").
+  `narrative` goes to the LLM and to Vector Search, so the rule "personal contact fields never leave Bronze" needs a
+  redaction step, not only a column list.
+
+### Decisions (2026-11-02)
+
+- **Names in narratives are redacted too**, not only emails and phone numbers. Patterns cannot find names reliably,
+  so this is an entity-aware pass with Databricks `ai_mask` (the model runs inside the workspace, not an outside
+  API). It needs a working foundation model, which is the open `ai_query` question. Until it exists, LLM
+  extraction and Vector Search must not read `silver.phmsa_incident*.narrative`; they read the masked column only.
+- **Pipe attributes are included** (type, diameter, wall thickness, SMYS, specification, seam, manufacturer,
+  coating, manufactured year), for questions like "failures by pipe age and diameter". `pipe_specification` and
+  `pipe_manufacturer` stay free text ("API 5L", "API-5L", "5L"); cleaning them up is Week 3 work.
+
+### PHMSA Silver columns (built 2026-11-02)
+
+| Group | Silver column <- Bronze | Type | Notes |
+| --- | --- | --- | --- |
+| Identity | `report_number` | string | Key |
+| | `supplemental_number`, `report_type` | int, string | Report revision |
+| | `report_received_date` | date | `M/d/yyyy` |
+| | `accident_year` <- `iyear` | int | |
+| | `local_datetime` | timestamp | `M/d/yyyy H:mm`, local time; `time_zone` only 24% filled, so no UTC |
+| Operator | `operator_id`, `operator_name` <- `name` | string | Operator resolution in Week 3. Street address, city, postal code dropped |
+| Location | `latitude`, `longitude` <- `location_*` | double | |
+| | `state` <- `onshore_state_abbreviation`, `county` <- `onshore_county_name`, `city` <- `onshore_city_name` | string | |
+| | `on_off_shore`, `federal_land`, `location_type`, `incident_area_type` | string / boolean | |
+| System | `pipe_facility_type` (interstate/intrastate), `pipeline_function`, `system_part_involved`, `item_involved` | string | |
+| | `installation_year` | int | 84% filled |
+| Release | `commodity_released_type`, `commodity_subtype`, `release_type`, `leak_type` | string | |
+| | `unintentional_release_bbls`, `intentional_release_bbls`, `recovered_bbls` | decimal(18,2) | m³ conversion in Gold |
+| Consequences | `fatalities` <- `fatal`, `injuries` <- `injure`, `num_pub_evacuated` | int | |
+| | `ignited`, `exploded`, `water_contaminated`, `soil_contaminated`, `wildlife_impact`, `could_be_hca`, `reached_hca`, `shutdown_due_accident` <- `*_ind` | boolean | |
+| | `est_cost_oper_paid`, `est_cost_gas_released`, `est_cost_prop_damage`, `est_cost_emergency`, `est_cost_environmental`, `est_cost_other`, `total_cost_usd` <- `prpty` | decimal(18,0) | Nominal dollars of the report year |
+| Response | `identified_datetime`, `on_site_datetime`, `shutdown_datetime`, `restart_datetime` | timestamp | For time-to-respond questions |
+| Cause | `cause`, `cause_details` | string | Trimmed. Evaluation labels |
+| Pipe | `pipe_type`, `pipe_diameter_in`, `pipe_wall_thickness_in`, `pipe_smys_psi`, `pipe_specification`, `pipe_seam_type`, `pipe_manufacturer`, `pipe_coating_type`, `manufactured_year`, `material_involved` | mixed | 25% filled (only when the item is pipe); "UNKNOWN" -> null |
+| Narrative | `narrative` | string | Emails -> `[EMAIL]`, phone numbers -> `[PHONE]`. Names still present (see Decisions) |
+
+62 columns. Left out on purpose:
+- **Personal contact:** `preparer_*`, `local_contact_*`, `authorizer_*`, `prepared_date`.
+- **Operator address:** `operator_street_address`, `operator_city_name`, `operator_postal_code`.
+- **Cause-specific detail:** most of the 507 sparse columns, such as corrosion type, excavation party and
+  inspection-tool years. Each applies to one cause; add them in a later week if the agent needs them.
+
+### PHMSA results (job run 2026-11-02)
+
+- Rows match Bronze (6,052); no value that Bronze had in a parseable form was lost (check 7).
+- All PHMSA expectations pass except `narrative_present`: 31 reports have no narrative (warn, kept).
+- Redaction replaced 10 emails in 4 reports and 12 phone numbers in 7 reports; none left (check 6b). Profiling had
+  found 1 email: its pattern only matched lowercase domains, and most narratives are upper case.
+- `silver.phmsa_incident`: 6,052 versions, all current (one snapshot so far).
 
 ## Acceptance checks (`sql/20_silver_checks.sql`)
 
@@ -122,6 +185,8 @@ download produces history without new code.
 5. Closed with no successor = exactly the 5 withdrawn incidents. This is the deleted-incident report.
    5b. Gaps between versions = INC2024-095 only.
 6. No PHMSA personal-contact column exists in any `silver` table (`information_schema.columns`).
+   6b. No email or phone number left in narratives. 7. PHMSA rows and parsed values match Bronze.
+   8. PHMSA history: one version per report so far.
 
 ## Tests
 
@@ -135,7 +200,7 @@ download produces history without new code.
 1. `silver.py`: `cer_incident_snapshot` + expectations, added to `incident_ingest`. Run checks 1–2.
 2. `history.py` + `incident_history` pipeline + `incident_refresh` job. Run checks 3–5.
 3. Write the results into CLAUDE.md and tick Week 2 in the project plan.
-4. Profile PHMSA columns, then `phmsa_incident_snapshot` and `phmsa_incident`. Run check 6.
+4. Profile PHMSA columns, then `phmsa_incident_snapshot` and `phmsa_incident`. Run checks 6–8. Done 2026-11-02.
 
 ## To verify while building
 
