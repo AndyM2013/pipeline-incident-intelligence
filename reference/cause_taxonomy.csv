@@ -1,0 +1,49 @@
+source,source_cause,source_cause_detail,taxonomy_cause,mapping,incidents,rationale
+cer,Corrosion and Cracking,,Corrosion and Cracking,direct,,CER immediate cause (what_happened) is the target taxonomy.
+cer,Defect and Deterioration,,Defect and Deterioration,direct,,CER immediate cause (what_happened) is the target taxonomy.
+cer,Equipment Failure,,Equipment Failure,direct,,CER immediate cause (what_happened) is the target taxonomy.
+cer,External Interference,,External Interference,direct,,CER immediate cause (what_happened) is the target taxonomy.
+cer,Incorrect Operation,,Incorrect Operation,direct,,CER immediate cause (what_happened) is the target taxonomy.
+cer,Natural Force Damage,,Natural Force Damage,direct,,CER immediate cause (what_happened) is the target taxonomy.
+cer,Other Causes,,Other Causes,direct,,CER immediate cause (what_happened) is the target taxonomy.
+phmsa,CORROSION FAILURE,INTERNAL CORROSION,Corrosion and Cracking,direct,853,
+phmsa,CORROSION FAILURE,EXTERNAL CORROSION,Corrosion and Cracking,direct,475,
+phmsa,EQUIPMENT FAILURE,NON-THREADED CONNECTION FAILURE,Equipment Failure,direct,735,
+phmsa,EQUIPMENT FAILURE,PUMP OR PUMP-RELATED EQUIPMENT,Equipment Failure,direct,599,
+phmsa,EQUIPMENT FAILURE,OTHER EQUIPMENT FAILURE,Equipment Failure,direct,406,
+phmsa,EQUIPMENT FAILURE,THREADED CONNECTION/COUPLING FAILURE,Equipment Failure,direct,392,
+phmsa,EQUIPMENT FAILURE,MALFUNCTION OF CONTROL/RELIEF EQUIPMENT,Equipment Failure,direct,352,
+phmsa,EQUIPMENT FAILURE,DEFECTIVE OR LOOSE TUBING OR FITTING,Equipment Failure,direct,156,
+phmsa,EQUIPMENT FAILURE,"FAILURE OF EQUIPMENT BODY (EXCEPT PUMP), TANK PLATE, OR OTHER MATERIAL",Equipment Failure,direct,119,
+phmsa,EXCAVATION DAMAGE,EXCAVATION DAMAGE BY THIRD PARTY,External Interference,direct,124,CER files excavation hits under External Interference.
+phmsa,EXCAVATION DAMAGE,EXCAVATION DAMAGE BY OPERATOR'S CONTRACTOR (SECOND PARTY),External Interference,direct,53,CER files excavation hits under External Interference.
+phmsa,EXCAVATION DAMAGE,PREVIOUS DAMAGE DUE TO EXCAVATION ACTIVITY,Defect and Deterioration,judgment,20,"Failed later from an old dent or gouge. Origin is interference, but the failure is deterioration of damaged pipe; PHMSA keeps it under excavation."
+phmsa,EXCAVATION DAMAGE,EXCAVATION DAMAGE BY OPERATOR (FIRST PARTY),External Interference,direct,2,CER files excavation hits under External Interference.
+phmsa,INCORRECT OPERATION,OTHER INCORRECT OPERATION,Incorrect Operation,direct,192,
+phmsa,INCORRECT OPERATION,EQUIPMENT NOT INSTALLED PROPERLY,Incorrect Operation,judgment,177,Workmanship error at install. Could be read as Equipment Failure; PHMSA's own choice is followed.
+phmsa,INCORRECT OPERATION,"VALVE LEFT OR PLACED IN WRONG POSITION, BUT NOT RESULTING IN A TANK, VESSEL, OR SUMP/SEPARATOR OVERFLOW OR FACILITY OVERPRESSURE",Incorrect Operation,direct,165,
+phmsa,INCORRECT OPERATION,"TANK, VESSEL, OR SUMP/SEPARATOR ALLOWED OR CAUSED TO OVERFILL OR OVERFLOW",Incorrect Operation,direct,163,
+phmsa,INCORRECT OPERATION,PIPELINE OR EQUIPMENT OVERPRESSURED,Incorrect Operation,direct,68,
+phmsa,INCORRECT OPERATION,DAMAGE BY OPERATOR OR OPERATOR'S CONTRACTOR NOT RELATED TO EXCAVATION AND NOT DUE TO MOTORIZED VEHICLE/EQUIPMENT DAMAGE,Incorrect Operation,judgment,37,"Operator's own crew damaged the asset; kept with Incorrect Operation as PHMSA does, though CER might file it as External Interference."
+phmsa,INCORRECT OPERATION,WRONG EQUIPMENT SPECIFIED OR INSTALLED,Incorrect Operation,judgment,32,Specification error; CER would likely add Engineering and Planning as the basic cause.
+phmsa,MATERIAL FAILURE OF PIPE OR WELD,"DESIGN-, CONSTRUCTION-, INSTALLATION-, OR FABRICATION-RELATED",Defect and Deterioration,direct,234,Manufacturing and construction defects.
+phmsa,MATERIAL FAILURE OF PIPE OR WELD,ORIGINAL MANUFACTURING-RELATED (NOT GIRTH WELD OR OTHER WELDS FORMED IN THE FIELD),Defect and Deterioration,direct,126,Manufacturing and construction defects.
+phmsa,MATERIAL FAILURE OF PIPE OR WELD,ENVIRONMENTAL CRACKING-RELATED,Corrosion and Cracking,judgment,46,"Stress-corrosion and similar cracking; CER groups cracking with corrosion, not with material defects."
+phmsa,NATURAL FORCE DAMAGE,TEMPERATURE,Natural Force Damage,direct,138,
+phmsa,NATURAL FORCE DAMAGE,HEAVY RAINS/FLOODS,Natural Force Damage,direct,58,
+phmsa,NATURAL FORCE DAMAGE,LIGHTNING,Natural Force Damage,direct,34,
+phmsa,NATURAL FORCE DAMAGE,"EARTH MOVEMENT, NOT DUE TO HEAVY RAINS/FLOODS",Natural Force Damage,direct,13,
+phmsa,NATURAL FORCE DAMAGE,OTHER NATURAL FORCE DAMAGE,Natural Force Damage,direct,13,
+phmsa,NATURAL FORCE DAMAGE,HIGH WINDS,Natural Force Damage,direct,5,
+phmsa,NATURAL FORCE DAMAGE,TREES/VEGETATION ROOTS,Natural Force Damage,direct,2,
+phmsa,NATURAL FORCE DAMAGE,SNOW/ICE IMPACT OR ACCUMULATION,Natural Force Damage,direct,1,
+phmsa,OTHER ACCIDENT CAUSE,MISCELLANEOUS,Other Causes,direct,84,
+phmsa,OTHER ACCIDENT CAUSE,UNKNOWN,,excluded,50,No ground truth: left out of extraction scoring.
+phmsa,OTHER OUTSIDE FORCE DAMAGE,"DAMAGE BY CAR, TRUCK, OR OTHER MOTORIZED VEHICLE/EQUIPMENT NOT ENGAGED IN EXCAVATION",External Interference,direct,46,"Third-party or outside force, not excavation."
+phmsa,OTHER OUTSIDE FORCE DAMAGE,OTHER OUTSIDE FORCE DAMAGE,External Interference,direct,38,"Third-party or outside force, not excavation."
+phmsa,OTHER OUTSIDE FORCE DAMAGE,ELECTRICAL ARCING FROM OTHER EQUIPMENT OR FACILITY,External Interference,judgment,16,Arcing from someone else's equipment; outside the operator's system.
+phmsa,OTHER OUTSIDE FORCE DAMAGE,INTENTIONAL DAMAGE,External Interference,direct,10,"Third-party or outside force, not excavation."
+phmsa,OTHER OUTSIDE FORCE DAMAGE,"NEARBY INDUSTRIAL, MAN-MADE, OR OTHER FIRE/EXPLOSION AS PRIMARY CAUSE OF ACCIDENT",External Interference,direct,9,"Third-party or outside force, not excavation."
+phmsa,OTHER OUTSIDE FORCE DAMAGE,PREVIOUS MECHANICAL DAMAGE NOT RELATED TO EXCAVATION,Defect and Deterioration,judgment,5,Same reasoning as previous excavation damage: old damage that failed later.
+phmsa,OTHER OUTSIDE FORCE DAMAGE,"DAMAGE BY BOATS, BARGES, DRILLING RIGS, OR OTHER MARITIME EQUIPMENT OR VESSELS SET ADRIFT OR WHICH HAVE OTHERWISE LOST THEIR MOORING",External Interference,direct,2,"Third-party or outside force, not excavation."
+phmsa,OTHER OUTSIDE FORCE DAMAGE,ROUTINE OR NORMAL FISHING OR OTHER MARITIME ACTIVITY NOT ENGAGED IN EXCAVATION,External Interference,direct,2,"Third-party or outside force, not excavation."

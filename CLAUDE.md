@@ -33,8 +33,13 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   Versions per snapshot 1,655 / 281 / 58 / 60 / 115; 2,034 current; 5 withdrawn incidents; INC2024-095 has a gap.
 - 2026-11-02: Week 2 done. `silver.phmsa_incident_snapshot` (62 columns incl. pipe attributes, no contact fields,
   emails/phones in narratives redacted) and `silver.phmsa_incident` (SCD2, 6,052 versions). Checks 6-8 pass.
-- Next: Week 3 (conformance): cause taxonomy mapping, barrels -> m³, operator resolution, reconciliation.
-  First answer the `ai_query` question: it also decides the `ai_mask` name-redaction pass.
+- 2026-11-02: Week 3 started. `ai_query` and `ai_mask` work (see Open questions). Cause taxonomy approved:
+  `reference/cause_taxonomy.csv` maps PHMSA's 41 `cause_details` onto CER's 7 immediate causes
+  (5,669 reports direct, 333 judgment calls with rationale, 50 UNKNOWN excluded from scoring).
+  CER basic causes have no PHMSA equivalent and are not scored. Equipment Failure is 46% of PHMSA reports,
+  so extraction is reported with macro-F1 and a confusion matrix, not accuracy alone.
+- Next: load the taxonomy as `silver.cause_taxonomy` and add the mapped cause to both Silver tables; then
+  barrels -> m³ in `gold.incident_fact`, operator resolution (`silver.operator`), reconciliation vs published summaries.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -70,7 +75,10 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   `reported_date` changed format from `01/02/2008` to `1/2/2008 12:00:00 AM` in all 1,651 rows. Most of the 140 and 150
   changes in 2025 are `incident_types` relabels ("Serious Injury (CER or TSB)" -> "(CER)" -> "(as defined in the OPR)").
   Real updates are `status`, causes moving from "To be determined" to a code, coordinates, volume corrections, company renames.
-- Does `ai_query` reach a pay-per-token model in this workspace? Also decides whether `ai_mask` can redact names in narratives.
+- ~~Does `ai_query` reach a pay-per-token model in this workspace?~~ Yes (2026-11-02): 12 READY endpoints incl.
+  `databricks-meta-llama-3-3-70b-instruct`, `databricks-llama-4-maverick`, Qwen, GPT-OSS, and embeddings
+  (`databricks-gte-large-en`, `databricks-bge-large-en`). `ai_mask(text, array('person'))` masks names in a
+  made-up narrative and leaves the facts. No Claude API fallback needed.
 
 ## Agent review log
 Record each time generated code needed a fix: what was wrong, how it was caught. This is interview material.
