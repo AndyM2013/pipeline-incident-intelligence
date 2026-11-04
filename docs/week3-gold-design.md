@@ -116,10 +116,10 @@ taxonomy. History is not lost: the Internet Archive has 5 distinct captures (202
   that state (`offshore_state_abbreviation`): 19 LA, 1 CA (2022), 1 TX (2021, the Texas off-by-one above).
 - The other 37 offshore reports have no state in either column (federal waters); PHMSA counts them in no state.
 
-Fix (proposed): Silver adds `offshore_state`, and `gold.incident_fact.region` = onshore state, else offshore state.
-Adding a column to `phmsa_incident_snapshot` changes what history diffs: the next PHMSA snapshot would open ~21 false
-versions unless `incident_history` is fully refreshed once (rebuilds from the Volume), or the column is added in Gold
-from Bronze instead. Needs a decision before building.
+Fixed 2026-11-04: `silver.phmsa_incident_snapshot` adds `offshore_state`; `incident_history` was fully refreshed
+once (history identical: CER 1,655 / 281 / 58 / 60 / 115 versions, 5 withdrawn, INC2024-095 gap; PHMSA 6,052).
+`gold.incident_fact.region` will be onshore state, else offshore state. `sql/25_reconciliation_checks.sql` now
+compares all 832 state x year cells and the national years: 0 differences, 5,792 incidents, 37 in federal waters.
 
 ## Decisions needed
 

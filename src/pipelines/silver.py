@@ -213,6 +213,7 @@ PHMSA_TEXT = {
     "operator_id": "operator_id",
     "operator_name": "name",
     "state": "onshore_state_abbreviation",
+    "offshore_state": "offshore_state_abbreviation",  # offshore in state waters; null in federal waters
     "county": "onshore_county_name",
     "city": "onshore_city_name",
     "on_off_shore": "on_off_shore",

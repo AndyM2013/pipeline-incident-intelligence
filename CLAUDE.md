@@ -43,7 +43,9 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   (PHMSA); every report maps. `history.py` drops them before diffing (`NOT_DIFFED`), so no versions opened. Checks 9-9d pass.
 - 2026-11-04: Week 3 design drafted (`docs/week3-gold-design.md`, decisions 1-3 open). CER comprehensive file
   approved as a second CER source. `scripts/fetch_phmsa_trends.py` exports PHMSA's 20-year trend (headless browser,
-  `requirements-browser.txt`) to `published/phmsa_trends/<date>/`; national counts equal Silver 2010-2025, Texas 2021 is off by one.
+  `requirements-browser.txt`) to `published/phmsa_trends/<date>/`; all 52 states exported. Silver adds `offshore_state` (PHMSA counts state-waters
+  offshore incidents under the state); `incident_history` fully refreshed once, history unchanged.
+  `sql/25_reconciliation_checks.sql`: 832 state-year cells and every national year 2010-2025 match, 0 differences.
 - Next: barrels -> m³ in `gold.incident_fact`, operator resolution (`silver.operator`), reconciliation vs published summaries.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
