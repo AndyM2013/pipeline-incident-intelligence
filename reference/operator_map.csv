@@ -1,0 +1,97 @@
+source,source_operator,operator_key,operator_name,parent_group,rationale
+cer,1057533 Alberta Ltd.,ab_1057533,1057533 Alberta Ltd.,,
+cer,2193914 Canada Limited,ca_2193914,2193914 Canada Limited,,
+cer,Alliance Pipeline Ltd.,alliance,Alliance Pipeline,Pembina,Pembina owns 100% and operates since buying Enbridge's 50% (closed 2024-04).
+cer,"Alliance Pipeline Ltd., as General Partner for and on behalf of Alliance Pipeline Limited Partnership",alliance,Alliance Pipeline,Pembina,Same operator: the general partner acting for the partnership.
+cer,Burlington Resources Canada (Hunter) Ltd.,burlington_hunter,Burlington Resources Canada (Hunter) Ltd.,,
+cer,Canadian Natural Resources Limited,cnrl,Canadian Natural Resources Limited,,
+cer,Centra Transmission Holdings Inc.,centra,Centra Transmission Holdings Inc.,,
+cer,Champion Pipe Line Corporation Limited,champion,Champion Pipe Line Corporation Limited,,
+cer,Cochin Pipe Lines Ltd.,cochin_canada,Cochin Pipeline (Canada),Pembina,Earlier name of the Canadian Cochin operator. Pembina bought Kinder Morgan Canada and the US part of Cochin (closed 2019-12-17).
+cer,Kinder Morgan Cochin ULC,cochin_canada,Cochin Pipeline (Canada),Pembina,Canadian Cochin operator. Pembina since 2019-12-17.
+cer,Emera Brunswick Pipeline Company Ltd.,brunswick,Emera Brunswick Pipeline,,
+cer,EnCana Corporation,encana,EnCana Corporation,,
+cer,Enbridge G and P Canada Pipelines Inc.,northriver_gp,NorthRiver Midstream G and P Canada Pipelines,,Enbridge sold its Canadian gathering and processing lines to Brookfield (NorthRiver Midstream) in 2019; same lines as the NorthRiver G and P row.
+cer,"NorthRiver Midstream G and P Canada Pipelines Inc., as general partner and on behalf of NorthRiver Midstream G and P Canada Pipelines Limited Partnership",northriver_gp,NorthRiver Midstream G and P Canada Pipelines,,Successor of Enbridge G and P Canada Pipelines.
+cer,NorthRiver Midstream NEBC Connector GP Inc.,northriver_nebc,NorthRiver Midstream NEBC Connector,,
+cer,Enbridge Pipelines (NW) Inc.,enbridge_nw,Enbridge Pipelines (NW) Inc.,Enbridge,Norman Wells line.
+cer,Enbridge Pipelines (Westspur) Inc.,westspur,Westspur Pipeline,,Westspur system now operated by Kingston Midstream (the Kingston Midstream Westspur name appears in later CER rows); no longer Enbridge.
+cer,Kingston Midstream Westspur Limited,westspur,Westspur Pipeline,,Successor of Enbridge Pipelines (Westspur) Inc.
+cer,Kingston Midstream Limited,kingston_midstream,Kingston Midstream Limited,,A different Kingston Midstream company from the Westspur operator.
+cer,Enbridge Pipelines Inc.,enbridge_pipelines,Enbridge Pipelines Inc.,Enbridge,Canadian Mainline.
+cer,Enbridge Southern Lights GP Inc. on behalf of Enbridge Southern Lights LP,southern_lights_canada,Southern Lights Pipeline (Canada),Enbridge,
+cer,Ethane Shippers Joint Venture,ethane_shippers,Ethane Shippers Joint Venture,,
+cer,Express Pipeline Ltd.,express_canada,Express Pipeline (Canada),Enbridge,Spectra bought Express-Platte in 2013; Spectra merged into Enbridge in 2017. No later sale found.
+cer,ExxonMobil Canada Properties,exxonmobil_canada,ExxonMobil Canada Properties,ExxonMobil,
+cer,Foothills Pipe Lines Ltd.,foothills,Foothills Pipe Lines Ltd.,,TC Energy. TC Energy has no hazardous liquid operator in PHMSA since the South Bow spin-off; not a cross-border group.
+cer,Foothills Pipe Lines (Saskatchewan) Ltd.,foothills_sask,Foothills Pipe Lines (Saskatchewan) Ltd.,,TC Energy; separate legal entity from Foothills Pipe Lines Ltd.
+cer,Foothills Pipe Lines (South B.C.) Ltd.,foothills_south_bc,Foothills Pipe Lines (South B.C.) Ltd.,,TC Energy; separate legal entity from Foothills Pipe Lines Ltd.
+cer,Husky Oil Limited,husky,Husky Oil Limited,,
+cer,LBX Pipeline Ltd.,lbx,LBX Pipeline Ltd.,,
+cer,Many Islands Pipe Lines (Canada) Limited,many_islands,Many Islands Pipe Lines (Canada) Limited,,
+cer,Maritimes & Northeast Pipeline Management Ltd.,maritimes_northeast,Maritimes & Northeast Pipeline,,Owners not confirmed today; left out of parent groups until checked.
+cer,Milk River Pipeline Ltd.,milk_river,Milk River Pipeline Ltd.,,
+cer,Minell Pipeline Limited,minell,Minell Pipeline,,
+cer,Minell Pipeline Ltd.,minell,Minell Pipeline,,Same company: Ltd. and Limited are one legal form.
+cer,Montreal Pipe Line Limited,montreal_pipe_line,Montreal Pipe Line Limited,Portland-Montreal Pipe Line,Canadian half of one crude system; Portland Pipe Line Corporation (PHMSA 15786) runs the US half. A system group; not a parent company.
+cer,NOVA Gas Transmission Ltd.,ngtl,NGTL System,,TC Energy's NGTL System; later reported as NGTL GP Ltd. for NGTL Limited Partnership. Not NOVA Chemicals.
+cer,"NGTL GP Ltd., as general partner on behalf of NGTL Limited Partnership",ngtl,NGTL System,,Successor name of NOVA Gas Transmission Ltd.
+cer,"NGTL GP Ltd., as general partner, on behalf of NGTL Limited Partnership",ngtl,NGTL System,,Same string as the row above with one more comma.
+cer,NOVA Chemicals (Canada) Ltd.,nova_chemicals,NOVA Chemicals (Canada) Ltd.,,Not NOVA Gas Transmission: shares the word NOVA only.
+cer,Niagara Gas Transmission Limited,niagara_gas,Niagara Gas Transmission Limited,,
+cer,Pembina Energy Services Inc.,pembina_energy_services,Pembina Energy Services Inc.,Pembina,
+cer,Pembina Prairie Facilities Ltd.,pembina_prairie,Pembina Prairie Facilities Ltd.,Pembina,
+cer,Pouce Coupé Pipe Line Ltd. as agent and general partner of the Pembina North Limited Partnership,pouce_coupe,Pouce Coupé Pipe Line,Pembina,General partner of a Pembina partnership.
+cer,Provident Energy Pipeline Inc.,provident,Provident Energy Pipeline Inc.,Pembina,Pembina acquired Provident Energy in 2012.
+cer,"Plains Marketing Canada, L.P.",plains_marketing_canada,"Plains Marketing Canada, L.P.",,Not confirmed whether it went to Keyera with Plains' Canadian NGL business (closed 2026-05-12); left out of parent groups.
+cer,Plains Midstream Canada ULC,plains_midstream_canada,Plains Midstream Canada ULC,,Sold to Keyera with Plains' Canadian NGL business (closed 2026-05-12). Today's owner is Keyera; not cross-border.
+cer,Souris Valley Pipeline Limited,souris_valley,Souris Valley Pipeline Limited,,
+cer,TransCanada Keystone Pipeline GP Ltd.,keystone_canada,Keystone Pipeline (Canada),South Bow,Keystone moved from TC Energy to South Bow in the 2024 spin-off.
+cer,South Bow GP (Canada) Ltd.,keystone_canada,Keystone Pipeline (Canada),South Bow,Successor name of TransCanada Keystone Pipeline GP Ltd.
+cer,Spectra Energy Empress Management Inc. as General Partner and Agent for Spectra Energy Empress L.P.,spectra_empress,Spectra Energy Empress L.P.,,Spectra midstream; owner today not confirmed; left out of parent groups.
+cer,Spectra Energy Midstream Canada Partner Corporation,spectra_midstream_canada,Spectra Energy Midstream Canada Partner Corporation,,Spectra midstream; owner today not confirmed; left out of parent groups.
+cer,Trans Mountain Pipeline Inc.,trans_mountain,Trans Mountain Pipeline,,Earlier name of the Trans Mountain operator.
+cer,Trans Mountain Pipeline ULC,trans_mountain,Trans Mountain Pipeline,,
+cer,Trans Québec and Maritimes Pipeline Inc.,tqm,Trans Québec and Maritimes Pipeline,,
+cer,Trans-Northern Pipelines Inc.,trans_northern,Trans-Northern Pipelines Inc.,,
+cer,TransCanada PipeLines Limited,tcpl,TransCanada PipeLines Limited,,TC Energy; not a cross-border group (see Foothills).
+cer,TransCanada PipeLines Limited B.C. System,tcpl,TransCanada PipeLines Limited,,A system of the same legal operator.
+cer,Tundra Energy Marketing Limited,tundra,Tundra Energy Marketing Limited,,
+cer,Twin Rivers Paper Company Inc.,twin_rivers_paper,Twin Rivers Paper Company Inc.,,
+cer,Twin Rivers Pulp Ltd.,twin_rivers_pulp,Twin Rivers Pulp Ltd.,,Separate legal entity from Twin Rivers Paper Company Inc.
+cer,Westcoast Energy Inc.,westcoast,Westcoast Energy,Enbridge,Spectra Energy Transmission; Enbridge since the 2017 Spectra merger.
+cer,"Westcoast Energy Inc., carrying on business as Spectra Energy Transmission",westcoast,Westcoast Energy,Enbridge,Same legal operator under its trade name.
+cer,Westcoast Energy GP Inc. on behalf of Westcoast Energy Limited Partnership,westcoast,Westcoast Energy,Enbridge,Successor name: general partner for the Westcoast partnership.
+phmsa,11169,phmsa:11169,,Enbridge,
+phmsa,31423,phmsa:31423,,Enbridge,
+phmsa,40668,phmsa:40668,,Enbridge,
+phmsa,39474,phmsa:39474,,Enbridge,
+phmsa,15774,phmsa:15774,,Enbridge,Reported as Enbridge Pipelines (North Dakota) LLC until 2013; same id as North Dakota Pipeline Company LLC.
+phmsa,32502,phmsa:32502,,Enbridge,Southern Lights (US).
+phmsa,31448,phmsa:31448,,Enbridge,
+phmsa,39145,phmsa:39145,,Enbridge,
+phmsa,31948,phmsa:31948,,Enbridge,
+phmsa,31720,phmsa:31720,,Enbridge,Reported as Kinder Morgan Pipelines (USA) Inc until 2013; same id as Express Holdings (USA). Express went to Spectra (2013) then Enbridge (2017).
+phmsa,31947,phmsa:31947,,,Enbridge Pipelines (Ozark): sold to MPLX in 2017. Not Enbridge today.
+phmsa,31613,phmsa:31613,,,Enbridge Pipelines (East Texas): owner today not confirmed; left out of parent groups.
+phmsa,32258,phmsa:32258,,Pembina,Kinder Morgan Cochin LLC (US Cochin). Pembina bought the US part of Cochin (closed 2019-12-17).
+phmsa,32334,phmsa:32334,,South Bow,Reported as TC Oil Pipeline Operations Inc until 2024; same id as South Bow Infrastructure Operations Inc.
+phmsa,4906,phmsa:4906,,ExxonMobil,
+phmsa,4908,phmsa:4908,,ExxonMobil,
+phmsa,12624,phmsa:12624,,ExxonMobil,Reported as Mobil Corp and as ExxonMobil Oil Corporation.
+phmsa,12628,phmsa:12628,,ExxonMobil,Reported as Mobil Pipe Line Company and as ExxonMobil Pipeline Co.
+phmsa,12634,phmsa:12634,,ExxonMobil,Reported as Mobil Chemical Co and as ExxonMobil Oil Corporation.
+phmsa,32009,phmsa:32009,,ExxonMobil,
+phmsa,31723,phmsa:31723,,ExxonMobil,
+phmsa,26134,phmsa:26134,,,ExxonMobil Oil Corp - West Coast: owner today not confirmed; left out of parent groups.
+phmsa,30005,phmsa:30005,,,Mobil Pacific Pipeline Co: owner today not confirmed; left out of parent groups.
+phmsa,15786,phmsa:15786,,Portland-Montreal Pipe Line,US half of the Portland-Montreal crude system (see Montreal Pipe Line Limited).
+phmsa,300,phmsa:300,,,Plains: no CER-regulated Plains operator confirmed after the Keyera sale (2026-05-12); not a cross-border group.
+phmsa,26085,phmsa:26085,,,Plains; see phmsa 300.
+phmsa,40498,phmsa:40498,,,Plains; see phmsa 300.
+phmsa,39401,phmsa:39401,,,Great Salt Plains Pipeline: not Plains. Listed so name matching cannot add it.
+phmsa,31570,phmsa:31570,,,Tesoro High Plains Pipeline: not Plains.
+phmsa,39043,phmsa:39043,,,Tallgrass Pony Express: not Express Pipeline.
+phmsa,39596,phmsa:39596,,,Permian Express Partners: not Express Pipeline.
+phmsa,39131,phmsa:39131,,,Permian Express Terminal: not Express Pipeline.
+phmsa,40036,phmsa:40036,,,Phillips 66 Alliance Refinery: not Alliance Pipeline.

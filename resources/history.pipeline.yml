@@ -6,10 +6,15 @@ resources:
       schema: silver
       serverless: true
       channel: CURRENT
-      # SCD2 from the snapshot views built by incident_ingest. Run after it, via the incident_refresh job.
+      # SCD2 from the snapshot views built by incident_ingest, and Gold from the SCD2 tables.
+      # Run after incident_ingest, via the incident_refresh job.
       libraries:
         - file:
             path: ../src/pipelines/history.py
+        - file:
+            path: ../src/pipelines/gold.py
       configuration:
         cer_snapshot_table: ${var.catalog}.silver.cer_incident_snapshot
         phmsa_snapshot_table: ${var.catalog}.silver.phmsa_incident_snapshot
+        operator_table: ${var.catalog}.silver.operator
+        cause_taxonomy_table: ${var.catalog}.silver.cause_taxonomy

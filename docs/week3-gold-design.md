@@ -1,6 +1,7 @@
 # Week 3 design — conformance: units, operators, `gold.incident_fact`
 
-Status: draft for review, 2026-11-04. The cause taxonomy (step 1) is built; see `reference/cause_taxonomy.csv`.
+Status: 2026-11-04. Built: cause taxonomy (`reference/cause_taxonomy.csv`), operator map (`reference/operator_map.csv`,
+`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. Open: CER comprehensive file as a second source, TSB 2025.
 
 ## What the profile showed (2026-11-04, current snapshots)
 
@@ -22,12 +23,15 @@ Status: draft for review, 2026-11-04. The cause taxonomy (step 1) is built; see 
   "Westcoast Energy Inc., carrying on business as Spectra Energy Transmission".
 - PHMSA: 361 `operator_id`, 411 names, 416 id-name pairs. The id is stable; names change (EXXONMOBIL PIPELINE CO /
   ... COMPANY LLC; ENBRIDGE PIPELINES (NORTH DAKOTA) LLC / NORTH DAKOTA PIPELINE COMPANY LLC).
-- Cross-border overlap is at the **parent** level, never the legal entity: Enbridge, TC Energy / South Bow
-  (Keystone), Kinder Morgan (Cochin), Plains, ExxonMobil, Express.
+- Cross-border overlap is at the **parent** level, never the legal entity. Candidates were Enbridge, TC Energy /
+  South Bow (Keystone), Kinder Morgan / Pembina (Cochin), Plains, ExxonMobil, Express. Checked against today's owners,
+  five groups remain (see below); TC Energy, Kinder Morgan and Plains are no longer on both sides.
 - Name matching would be wrong: "PLAINS" also hits GREAT SALT PLAINS and TESORO HIGH PLAINS, "EXPRESS" hits
   TALLGRASS PONY EXPRESS and PERMIAN EXPRESS, "ALLIANCE" hits PHILLIPS 66 ALLIANCE REFINERY.
-- Ownership changes over time: Express joined Enbridge (2013), Kinder Morgan Cochin went to Pembina (2019),
-  Keystone moved from TC Energy to South Bow (2024).
+- Ownership changes over time: Express went from Kinder Morgan to Spectra (2013) and with Spectra to Enbridge (2017);
+  Kinder Morgan Canada and the US part of Cochin went to Pembina (closed 2019-12-17); Keystone moved from TC Energy to
+  South Bow (2024); Pembina bought out Enbridge's half of Alliance (2024-04); Keyera bought Plains Midstream Canada
+  ULC, Plains' Canadian NGL business (closed 2026-05-12).
 
 ## Proposal
 
@@ -45,10 +49,27 @@ Same pattern as the taxonomy: a reviewed CSV in git, loaded by the pipeline, che
 | `rationale` | why, for every non-obvious row |
 
 - Every CER company string (63) is mapped by hand: small, and the variants need judgment.
-- PHMSA operators default to `phmsa:<operator_id>` with their latest name; only the ~40 ids in the candidate groups
-  above are listed in the CSV, each confirmed by hand. Unlisted ids need no row.
+- PHMSA operators default to `phmsa:<operator_id>` with their latest name; only the 33 ids in the candidate groups
+  above are listed in the CSV, each confirmed by hand (including the name look-alikes, listed with no group so the
+  decision is visible). Unlisted ids need no row.
 - `parent_group` is the **current** parent. Incident-time ownership is out of scope; the doc and table comment say so.
 - An expectation fails (warn) when a CER company has no row, so a new operator name is noticed, not silently unmapped.
+  A second one warns when a CSV row matches nothing (a typo).
+
+Built 2026-11-04: 63 CER strings -> 51 operators; 361 PHMSA ids (33 listed, 328 default). A group is set only when
+today's owner is confirmed and the group has members in both countries:
+
+| parent_group | CER operators / incidents | PHMSA ids / reports |
+| --- | --- | --- |
+| Enbridge | 7 / 627 (Mainline, NW, Southern Lights, Express, Westcoast) | 10 / 234 |
+| Pembina | 8 / 44 (Alliance, Cochin, Pouce Coupé, Provident, ...) | 1 / 9 (Cochin US) |
+| South Bow | 2 / 38 (Keystone) | 1 / 31 |
+| ExxonMobil | 1 / 3 | 7 / 135 |
+| Portland-Montreal Pipe Line | 1 / 9 | 1 / 2 |
+
+Left out until checked (rationale in the CSV): Maritimes & Northeast, the two Spectra midstream entities, Plains
+Marketing Canada, Enbridge Pipelines (East Texas), ExxonMobil West Coast, Mobil Pacific Pipeline. Ozark (sold to MPLX,
+2017) and Westspur (now Kingston Midstream) are no longer Enbridge.
 
 ### `gold.incident_fact`
 
@@ -58,11 +79,13 @@ One row per current incident, both regulators, from the SCD2 tables (`__END_AT I
 | column | CER | PHMSA |
 | --- | --- | --- |
 | `source`, `incident_id` | cer, incident_number | phmsa, report_number |
-| `country`, `region` | CA, province | US, state |
-| `event_date`, `event_year` | reported_date (no occurrence date published) | local_datetime |
+| `country`, `region` | ISO code of the province (1 CER incident is in Maine: US) | US, state, else offshore state |
+| `offshore` | null (not in the 16-column file) | on_off_shore = OFFSHORE |
+| `event_date`, `event_year` | reported_date (no occurrence date published) | local_datetime, accident_year |
 | `operator_key`, `parent_group` | via `silver.operator` | via `silver.operator` |
 | `substance` | substance | commodity_released_type |
 | `phase` | liquid / gas / unknown, from a substance list | liquid (all PHMSA volumes are liquid barrels) |
+| `volume_status` | reported / not_provided / not_applicable | reported |
 | `liquid_released_m3` | volume when phase = liquid | unintentional_release_bbls × 0.158987294928 |
 | `gas_released_m3` | volume when phase = gas | null (hazardous liquid data) |
 | `liquid_recovered_m3` | null (not published) | recovered_bbls × 0.158987294928 |
@@ -72,6 +95,13 @@ One row per current incident, both regulators, from the SCD2 tables (`__END_AT I
 | `taxonomy_causes` | taxonomy_causes | array(taxonomy_cause) |
 
 1 US barrel = 42 US gal = 0.158987294928 m³ exactly. Kept as `decimal(18,4)`; a unit test pins the constant.
+
+CER `release_type` (Gas / Liquid / Miscellaneous) cannot set the phase: it is fixed per substance, files every HVL
+under Gas and H2S / SO2 under Miscellaneous. Phase lists are constants in `src/pipelines/gold.py`: gas (natural gas,
+fuel gas, H2S, SO2, CO2), unknown (propane, butane, NGL, mixed HVP, sulphur: solid or molten), liquid (the other 20).
+
+Built 2026-11-04 in `incident_history` (`src/pipelines/gold.py`): 8,086 rows (CER 2,034, PHMSA 6,052). CER volumes:
+396 gas, 142 liquid, 56 phase unknown in neither column.
 
 ### Reconciliation (step 4)
 
@@ -123,11 +153,12 @@ compares all 832 state x year cells and the national years: 0 differences, 5,792
 
 ## Decisions needed
 
-1. **Liquid volume for PHMSA.** Use unintentional only (proposed: comparable with a CER spill; blowdowns are
-   planned) or unintentional + intentional.
-2. **CER HVLs** (propane, butane, NGL, mixed HVP: 45 incidents with a volume). Proposed: `phase = unknown`, volume in neither
-   column. Alternative: treat as liquid and accept some gas volumes in the liquid total.
-3. **Parent group as of today**, not as of the incident (proposed), or skip parent groups altogether.
+1. **Liquid volume for PHMSA.** Decided 2026-11-04: unintentional only (comparable with a CER spill; blowdowns are
+   planned). Intentional release has its own column.
+2. **CER HVLs** (propane, butane, NGL, mixed HVP: 45 incidents with a volume). Decided 2026-11-04: `phase = unknown`,
+   volume in neither column. Sulphur (11 with a volume) is unknown too.
+3. **Parent group as of today**, not as of the incident. Decided 2026-11-04. Consequence: Plains has no group
+   (Canadian business sold 2026-05), and Ozark's Enbridge-era reports count under no group.
 4. **CER comprehensive file.** Decided 2026-11-04: add it as a second CER source, keep the 16-column file and its
    history, land the comprehensive file and its 5 archive captures as `cer_comprehensive/<date>/`, reconcile the two.
 5. **Published summaries.** PHMSA: scripted, done 2026-11-04 (`scripts/fetch_phmsa_trends.py`, below).
@@ -147,10 +178,13 @@ First run (data as of 2026-11-03): national hazardous liquid incidents equal our
 every year 2010-2025. Texas equals ours in every year except 2021 (published 174, Silver 173): the first real
 reconciliation item. `--all-states` exports every state one after another, about 10 seconds each (~9 minutes).
 
-## Acceptance checks (to add as `sql/30_gold_checks.sql`)
+## Acceptance checks (`sql/30_gold_checks.sql`, all pass 2026-11-04)
 
-- Rows: CER current minus withdrawn, plus PHMSA current. No duplicate (`source`, `incident_id`).
-- Sum of `liquid_released_m3` per source equals the Silver sum after conversion (to the cent).
+- Operators: 0 unresolved, 0 listed rows unseen.
+- Rows: CER 2,034 current (withdrawn have an `__END_AT`), PHMSA 6,052. 0 missing, 0 duplicate (`source`, `incident_id`).
+- PHMSA m³ sums equal the Silver barrel sums converted once, within per-row rounding (0.0151 m³ on 220,816 m³).
+  CER gas and liquid m³ pass through with diff 0.
 - No row with both a liquid and a gas volume.
-- Every CER company resolves to an `operator_key`. Report incidents per `parent_group` per country.
-- The false-positive names above are not in any parent group (also a unit test).
+- Region null only offshore in federal waters (41: 37 in 2010-2025 as in `sql/25`, 4 in 2026).
+- Every parent group has incidents in both countries; the name look-alikes are in none (also unit tests).
+- Mapped causes: CER equal to immediate causes; PHMSA 6,002 mapped, 50 UNKNOWN.

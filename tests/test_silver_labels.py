@@ -121,7 +121,7 @@ def load_function(path, name, namespace):
     return namespace[name]
 
 
-taxonomy = load_function(SRC, "read_taxonomy", {"csv": __import__("csv")})(str(TAXONOMY))
+taxonomy = load_function(SRC, "read_reference", {"csv": __import__("csv")})(str(TAXONOMY))
 phmsa_rows = [r for r in taxonomy if r["source"] == "phmsa"]
 
 

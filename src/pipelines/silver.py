@@ -90,7 +90,7 @@ TAXONOMY_COLUMNS = ["source", "source_cause", "source_cause_detail", "taxonomy_c
 TAXONOMY_MAPPINGS = ["direct", "judgment", "excluded"]
 
 
-def read_taxonomy(path: str) -> list[dict]:
+def read_reference(path: str) -> list[dict]:
     """CSV rows with empty strings as None. Read in Python: the file is a workspace file, not a Volume file."""
     with open(path, newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
@@ -108,7 +108,7 @@ def taxonomy_map(rows: list[dict], source: str, field: str) -> Column:
 
 
 def taxonomy_rows() -> list[dict]:
-    return read_taxonomy(spark.conf.get("cause_taxonomy_path"))  # noqa: F821
+    return read_reference(spark.conf.get("cause_taxonomy_path"))  # noqa: F821
 
 
 @materialized_view(
@@ -333,4 +333,52 @@ def phmsa_incident_snapshot():
         # null for UNKNOWN (mapping = 'excluded'): no ground truth, left out of extraction scoring
         F.try_element_at(taxonomy_map(rows, "phmsa", "taxonomy_cause"), key).alias("taxonomy_cause"),
         F.try_element_at(taxonomy_map(rows, "phmsa", "mapping"), key).alias("taxonomy_mapping"),
+    )
+
+
+# Operators: reference/operator_map.csv, reviewed 2026-11-04; see docs/week3-gold-design.md.
+OPERATOR_COLUMNS = ["source", "source_operator", "operator_key", "operator_name", "parent_group", "rationale"]
+# Groups with a confirmed member in both countries, by owner today (not at the time of the incident).
+PARENT_GROUPS = ["Enbridge", "ExxonMobil", "Pembina", "Portland-Montreal Pipe Line", "South Bow"]
+
+
+@materialized_view(
+    name="silver.operator",
+    comment="One row per operator as the source reports it (CER company string, PHMSA operator_id), resolved to one "
+    "operator_key. parent_group is today's owner, only for cross-border groups. Source: reference/operator_map.csv.",
+)
+@dp.expect("operator_mapped", "operator_key IS NOT NULL")  # a new CER company name has no row yet
+@dp.expect("listed_operator_seen", "incidents > 0")  # a CSV row that matches nothing: a typo
+@dp.expect("known_parent_group", "parent_group IS NULL OR parent_group IN (" + ", ".join(f"'{g}'" for g in PARENT_GROUPS) + ")")
+def operator():
+    rows = read_reference(spark.conf.get("operator_map_path"))  # noqa: F821
+    listed = spark.createDataFrame(  # noqa: F821
+        [tuple(r[c] for c in OPERATOR_COLUMNS) for r in rows], schema=", ".join(f"{c} string" for c in OPERATOR_COLUMNS)
+    )
+    cer = (
+        spark.read.table("silver.cer_incident_snapshot")  # noqa: F821
+        .groupBy(F.lit("cer").alias("source"), F.col("company").alias("source_operator"))
+        .agg(F.countDistinct("incident_number").alias("incidents"), F.lit(None).cast("string").alias("reported_name"))
+    )
+    phmsa = (
+        spark.read.table("silver.phmsa_incident_snapshot")  # noqa: F821
+        .groupBy(F.lit("phmsa").alias("source"), F.col("operator_id").alias("source_operator"))
+        .agg(
+            F.countDistinct("report_number").alias("incidents"),
+            # PHMSA keeps the id when an operator is renamed: show the name of its latest report
+            F.max_by("operator_name", F.struct("_snapshot_date", "local_datetime")).alias("reported_name"),
+        )
+    )
+    seen = cer.unionByName(phmsa)
+    joined = seen.join(listed, ["source", "source_operator"], "full")
+    is_phmsa = F.col("source") == "phmsa"
+    return joined.select(
+        "source",
+        "source_operator",
+        F.coalesce("operator_key", F.when(is_phmsa, F.concat(F.lit("phmsa:"), "source_operator"))).alias("operator_key"),
+        F.coalesce("operator_name", "reported_name").alias("operator_name"),
+        "parent_group",
+        F.when(F.col("operator_key").isNotNull(), "listed").when(is_phmsa, "default").alias("mapping"),
+        "rationale",
+        F.coalesce("incidents", F.lit(0)).alias("incidents"),
     )

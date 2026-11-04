@@ -46,7 +46,12 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   `requirements-browser.txt`) to `published/phmsa_trends/<date>/`; all 52 states exported. Silver adds `offshore_state` (PHMSA counts state-waters
   offshore incidents under the state); `incident_history` fully refreshed once, history unchanged.
   `sql/25_reconciliation_checks.sql`: 832 state-year cells and every national year 2010-2025 match, 0 differences.
-- Next: barrels -> m³ in `gold.incident_fact`, operator resolution (`silver.operator`), reconciliation vs published summaries.
+- 2026-11-04: Design decisions 1-3 agreed (PHMSA unintentional volume only; CER HVLs phase unknown; parent group =
+  today's owner). `reference/operator_map.csv` + `silver.operator` (63 CER strings -> 51 operators, 361 PHMSA ids,
+  5 cross-border parent groups). `gold.incident_fact` (in `incident_history`, `src/pipelines/gold.py`): 8,086 rows,
+  m³ with liquid and gas apart. `sql/30_gold_checks.sql` all pass.
+- Next: CER comprehensive file as a second source (`cer_comprehensive/<date>/`, 5 archive captures + live), reconcile
+  it with the 16-column file; TSB 2025 tables (saved from a browser).
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -116,3 +121,7 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
   columns CER does not publish. CER publishes them in a second, "comprehensive" file under a different open.canada.ca
   dataset. Caught while searching for published summaries to reconcile against. Lesson: when the dictionary and the
   file disagree, look for another file before concluding the data is missing.
+- 2026-11-04 — The Week 3 design listed Plains as a cross-border group and said Express joined Enbridge in 2013.
+  Checking today's owner for each group (decision 3) showed Keyera bought Plains Midstream Canada in 2026-05, and
+  Express went to Spectra in 2013 and to Enbridge only with the 2017 merger. Lesson: a parent group is a dated fact;
+  set it only where the owner is confirmed, and say which rows were left out.

@@ -15,5 +15,6 @@ resources:
             path: ../src/pipelines/silver.py
       configuration:
         landing_root: /Volumes/${var.catalog}/bronze/landing
-        # Deployed with the bundle: the taxonomy is versioned in git, not landed in the Volume.
+        # Deployed with the bundle: the taxonomy and operator map are versioned in git, not landed in the Volume.
         cause_taxonomy_path: ${workspace.file_path}/reference/cause_taxonomy.csv
+        operator_map_path: ${workspace.file_path}/reference/operator_map.csv
