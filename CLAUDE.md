@@ -41,6 +41,9 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - 2026-11-04: `silver.cause_taxonomy` (MV in `incident_ingest`, read in Python from the bundle-deployed CSV via the
   `cause_taxonomy_path` setting). Snapshot views gain `taxonomy_causes` (CER) and `taxonomy_cause` / `taxonomy_mapping`
   (PHMSA); every report maps. `history.py` drops them before diffing (`NOT_DIFFED`), so no versions opened. Checks 9-9d pass.
+- 2026-11-04: Week 3 design drafted (`docs/week3-gold-design.md`, decisions 1-3 open). CER comprehensive file
+  approved as a second CER source. `scripts/fetch_phmsa_trends.py` exports PHMSA's 20-year trend (headless browser,
+  `requirements-browser.txt`) to `published/phmsa_trends/<date>/`; national counts equal Silver 2010-2025, Texas 2021 is off by one.
 - Next: barrels -> m³ in `gold.incident_fact`, operator resolution (`silver.operator`), reconciliation vs published summaries.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
@@ -56,10 +59,13 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 ## Source facts (checked 2026-10-30)
 - CER CSV: 2,034 incidents, 16 columns, years 2008–2026, encoding windows-1252, no ragged rows.
 - CER key: `Incident Number` (unique per row) -> `incident_number` in Bronze.
-- CER has NO free-text narrative. `What Happened` (immediate cause) and `Why It Happened` (basic cause) are
+- The 16-column CER file has no free-text narrative. `What Happened` (immediate cause) and `Why It Happened` (basic cause) are
   comma-separated category lists, e.g. "External Interference, Incorrect Operation". Treat them as multi-label coded causes.
-- The CER data dictionary describes ~100 columns (pipe material, coating, inspection dates…) that the published CSV does not contain.
-- Consequence: narratives for extraction and retrieval come from PHMSA; CER supplies Canadian facts and a clean cause taxonomy.
+- CER also publishes `pipeline-incidents-comprehensive-data.csv` (open.canada.ca dataset 7dffedc4, checked 2026-11-04):
+  102 columns, 2,039 rows, the columns the data dictionary describes, including short narratives
+  `Detailed what happened` / `Detailed why it happened` (99% filled, median 76 / 92 characters) and occurrence date.
+  Not loaded yet; whether to add it is decision 4 in `docs/week3-gold-design.md`.
+- Until then: narratives for extraction and retrieval come from PHMSA; CER supplies Canadian facts and a clean cause taxonomy.
 
 - CER history in Bronze (first load 2026-11-01): 5 snapshots, 1,655 -> 1,887 -> 1,923 -> 1,954 -> 2,034 rows; key unique in each.
   New incidents per snapshot: 236, 36, 32, 81. Changed incidents: 1,651 (2024-09-04 — every one is a `reported_date`
@@ -104,3 +110,7 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
 - 2026-11-02 — Profiling found 1 email in PHMSA narratives; the Silver redaction replaced 10. The profiling regex
   ended in `[a-z]{2,}`, so upper-case addresses ("...@KINDERMORGAN.COM") never matched. Caught because check 6b
   counted redactions instead of only checking that none were left. Lesson: count both sides of a filter.
+- 2026-11-04 — Since Week 0 the plan said "CER has no narrative" and explained the ~100-column data dictionary as
+  columns CER does not publish. CER publishes them in a second, "comprehensive" file under a different open.canada.ca
+  dataset. Caught while searching for published summaries to reconcile against. Lesson: when the dictionary and the
+  file disagree, look for another file before concluding the data is missing.
