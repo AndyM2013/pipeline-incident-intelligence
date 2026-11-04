@@ -50,8 +50,12 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   today's owner). `reference/operator_map.csv` + `silver.operator` (63 CER strings -> 51 operators, 361 PHMSA ids,
   5 cross-border parent groups). `gold.incident_fact` (in `incident_history`, `src/pipelines/gold.py`): 8,086 rows,
   m³ with liquid and gas apart. `sql/30_gold_checks.sql` all pass.
-- Next: CER comprehensive file as a second source (`cer_comprehensive/<date>/`, 5 archive captures + live), reconcile
-  it with the 16-column file; TSB 2025 tables (saved from a browser).
+- 2026-11-04: CER comprehensive file landed (`cer_comprehensive/<date>/`: 5 archive captures + 2026-11-04) into
+  `bronze.cer_comprehensive_raw`; today's 16-column file landed as snapshot 6 (15 new versions). `sql/25` checks 2-2b:
+  the two files hold the same incidents and identical shared values (only the `reported_date` format differs).
+  Its "Detailed what/why happened" columns turned out to be cause sub-codes, not narratives (review log).
+- Next: decision 4b (Silver for the comprehensive file, or leave it in Bronze); TSB 2025 tables (saved from a browser).
+  Then Week 4: `ai_mask` name pass over PHMSA narratives, before any extraction.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -69,10 +73,11 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - The 16-column CER file has no free-text narrative. `What Happened` (immediate cause) and `Why It Happened` (basic cause) are
   comma-separated category lists, e.g. "External Interference, Incorrect Operation". Treat them as multi-label coded causes.
 - CER also publishes `pipeline-incidents-comprehensive-data.csv` (open.canada.ca dataset 7dffedc4, checked 2026-11-04):
-  102 columns, 2,039 rows, the columns the data dictionary describes, including short narratives
-  `Detailed what happened` / `Detailed why it happened` (99% filled, median 76 / 92 characters) and occurrence date.
-  Not loaded yet; whether to add it is decision 4 in `docs/week3-gold-design.md`.
-- Until then: narratives for extraction and retrieval come from PHMSA; CER supplies Canadian facts and a clean cause taxonomy.
+  102 columns, 2,039 rows, the columns the data dictionary describes; windows-1252 like the 16-column file. Its
+  `Detailed what happened` / `Detailed why it happened` are coded sub-category paths (228 distinct items), **not
+  narratives**. Adds occurrence datetime, fatality / injury counts, pipe attributes. Loaded in Bronze only.
+- CER publishes no free-text narrative in either file. Narratives for extraction and retrieval come from PHMSA;
+  CER supplies Canadian facts and a clean cause taxonomy.
 
 - CER history in Bronze (first load 2026-11-01): 5 snapshots, 1,655 -> 1,887 -> 1,923 -> 1,954 -> 2,034 rows; key unique in each.
   New incidents per snapshot: 236, 36, 32, 81. Changed incidents: 1,651 (2024-09-04 — every one is a `reported_date`
@@ -117,10 +122,15 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
 - 2026-11-02 — Profiling found 1 email in PHMSA narratives; the Silver redaction replaced 10. The profiling regex
   ended in `[a-z]{2,}`, so upper-case addresses ("...@KINDERMORGAN.COM") never matched. Caught because check 6b
   counted redactions instead of only checking that none were left. Lesson: count both sides of a filter.
-- 2026-11-04 — Since Week 0 the plan said "CER has no narrative" and explained the ~100-column data dictionary as
-  columns CER does not publish. CER publishes them in a second, "comprehensive" file under a different open.canada.ca
-  dataset. Caught while searching for published summaries to reconcile against. Lesson: when the dictionary and the
-  file disagree, look for another file before concluding the data is missing.
+- 2026-11-04 — Since Week 0 the plan explained the ~100-column data dictionary as columns CER does not publish. CER
+  publishes them in a second, "comprehensive" file under a different open.canada.ca dataset. Caught while searching
+  for published summaries to reconcile against. Lesson: when the dictionary and the file disagree, look for another
+  file before concluding the data is missing.
+- 2026-11-04 — The same finding then claimed the comprehensive file has short CER narratives (`Detailed what happened`,
+  median 76 characters), and the user approved the source partly for a native CER evaluation set. Reading the values
+  after loading showed coded sub-category paths ("Damage or deterioration mechanism, Equipment, Valve Seals or
+  Packing"); CER has no narrative in either file. Caught by a per-column profile before writing Silver. Lesson: a
+  length profile does not tell prose from codes; read sample values (and the 2026-10-30 entry above said so).
 - 2026-11-04 — The Week 3 design listed Plains as a cross-border group and said Express joined Enbridge in 2013.
   Checking today's owner for each group (decision 3) showed Keyera bought Plains Midstream Canada in 2026-05, and
   Express went to Spectra in 2013 and to Enbridge only with the 2017 merger. Lesson: a parent group is a dated fact;

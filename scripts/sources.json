@@ -21,5 +21,14 @@
         "_comment": "Hazardous Liquid Accident Data - January 2010 to present. The zip holds a field-description file and a tab-delimited data file; data_glob picks the data file."
       }
     ]
+  },
+  "cer_comprehensive": {
+    "_comment": "Same incidents as cer, 102 columns incl. short narratives and occurrence date. Source page https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1 (checked 2026-11-04). The cer data dictionary describes these columns.",
+    "files": [
+      {
+        "url": "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-comprehensive-data.csv",
+        "role": "data"
+      }
+    ]
   }
 }

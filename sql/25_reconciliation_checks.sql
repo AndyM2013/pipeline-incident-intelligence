@@ -102,3 +102,44 @@ LEFT JOIN pipeline_intel.silver.phmsa_incident_snapshot s ON year(s.local_dateti
 WHERE p.accident_year >= 2010
 GROUP BY 1, 2
 ORDER BY 1;
+
+-- 2. CER's two files: the 16-column file (cer) and the comprehensive file (cer_comprehensive), compared on the
+--    dates both were landed (2024-09-04, 2026-11-04). Raw Bronze text, 15 shared columns; the comprehensive file
+--    names the coded causes what_happened_category / why_it_happened_category.
+--    Expect only_one_file = 0 and differ = 0 for every column except reported_date (format only, see 2b).
+--    2026-11-04: 1,887 and 2,039 incidents, 0 differences.
+WITH pairs AS (
+  SELECT _snapshot_date, incident_number, s.incident_number IS NULL OR c.incident_number IS NULL AS only_one_file,
+    map('incident_types', s.incident_types, 'reported_date', s.reported_date,
+        'nearest_populated_centre', s.nearest_populated_centre, 'province', s.province, 'company', s.company,
+        'status', s.status, 'latitude', s.latitude, 'longitude', s.longitude,
+        'volume', s.approximate_volume_released_m3, 'substance', s.substance, 'release_type', s.release_type,
+        'significant', s.significant, 'year', s.year, 'what_happened', s.what_happened,
+        'why_it_happened', s.why_it_happened) AS a,
+    map('incident_types', c.incident_types, 'reported_date', c.reported_date,
+        'nearest_populated_centre', c.nearest_populated_centre, 'province', c.province, 'company', c.company,
+        'status', c.status, 'latitude', c.latitude, 'longitude', c.longitude,
+        'volume', c.approximate_volume_released_m3, 'substance', c.substance, 'release_type', c.release_type,
+        'significant', c.significant, 'year', c.year, 'what_happened', c.what_happened_category,
+        'why_it_happened', c.why_it_happened_category) AS b
+  FROM pipeline_intel.bronze.cer_incident_raw s
+  FULL JOIN pipeline_intel.bronze.cer_comprehensive_raw c USING (incident_number, _snapshot_date)
+  WHERE _snapshot_date IN (SELECT DISTINCT _snapshot_date FROM pipeline_intel.bronze.cer_comprehensive_raw)
+    AND _snapshot_date IN (SELECT DISTINCT _snapshot_date FROM pipeline_intel.bronze.cer_incident_raw)
+)
+SELECT _snapshot_date, column_name, count(*) AS incidents, count_if(only_one_file) AS only_one_file,
+       count_if(NOT only_one_file AND NOT (a[column_name] <=> b[column_name])) AS differ
+FROM pairs LATERAL VIEW explode(map_keys(coalesce(a, b))) t AS column_name
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+-- 2b. reported_date differs only in format (16-column: 1/2/2008 12:00:00 AM since 2024-09-04; comprehensive:
+--     01/02/2008). Expect same = incidents and unparsed = 0.
+SELECT _snapshot_date, count(*) AS incidents,
+       count_if(try_to_date(split(s.reported_date, ' ')[0], 'M/d/yyyy')
+                <=> try_to_date(c.reported_date, 'MM/dd/yyyy')) AS same,
+       count_if(try_to_date(c.reported_date, 'MM/dd/yyyy') IS NULL) AS unparsed
+FROM pipeline_intel.bronze.cer_incident_raw s
+JOIN pipeline_intel.bronze.cer_comprehensive_raw c USING (incident_number, _snapshot_date)
+GROUP BY 1
+ORDER BY 1;

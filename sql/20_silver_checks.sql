@@ -1,7 +1,8 @@
 -- Week 2 acceptance checks for Silver. Run after the incident_ingest update finishes.
 -- Numbers are in docs/week2-silver-design.md.
 
--- 1. One normalized row per Bronze row, per snapshot. Expect 1,655 / 1,887 / 1,923 / 1,954 / 2,034 and diff = 0.
+-- 1. One normalized row per Bronze row, per snapshot. Expect 1,655 / 1,887 / 1,923 / 1,954 / 2,034 / 2,039
+--    (2026-11-04) and diff = 0.
 SELECT b._snapshot_date, b.bronze_rows, s.silver_rows, b.bronze_rows - s.silver_rows AS diff
 FROM (SELECT _snapshot_date, count(*) AS bronze_rows FROM pipeline_intel.bronze.cer_incident_raw GROUP BY 1) b
 LEFT JOIN (SELECT _snapshot_date, count(*) AS silver_rows FROM pipeline_intel.silver.cer_incident_snapshot GROUP BY 1) s
@@ -68,13 +69,13 @@ GROUP BY cur._snapshot_date
 ORDER BY cur._snapshot_date;
 
 -- 3. Versions SCD2 opened per snapshot. Expect new + changed from check 2b:
---    20220914: 1,655  20240904: 281  20250318: 58  20250901: 60  20261030: 115.
+--    20220914: 1,655  20240904: 281  20250318: 58  20250901: 60  20261030: 115  20261104: 15.
 SELECT __START_AT AS snapshot_version, count(*) AS versions_opened
 FROM pipeline_intel.silver.cer_incident
 GROUP BY 1
 ORDER BY 1;
 
--- 4. Current incidents equal the latest snapshot. Expect 2,034.
+-- 4. Current incidents equal the latest snapshot. Expect 2,039 (2026-11-04).
 SELECT count(*) AS current_incidents
 FROM pipeline_intel.silver.cer_incident
 WHERE __END_AT IS NULL;
@@ -158,7 +159,8 @@ FROM pipeline_intel.silver.cer_incident_snapshot
 GROUP BY 1
 ORDER BY 1;
 
--- 9d. The mapped cause is not diffed: adding it opened no versions. Expect cer 2,169 and phmsa 6,052 versions.
+-- 9d. The mapped cause is not diffed: adding it opened no versions. Expect cer 2,169 and phmsa 6,052 versions
+--     (2026-11-04: cer 2,184 after the sixth snapshot's 15).
 SELECT 'cer' AS source, count(*) AS versions FROM pipeline_intel.silver.cer_incident
 UNION ALL
 SELECT 'phmsa', count(*) FROM pipeline_intel.silver.phmsa_incident;

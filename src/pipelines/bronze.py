@@ -37,6 +37,17 @@ SOURCES = {
             "encoding": "windows-1252",  # checked 2026-10-30: UTF-8 garbles names like "Ile des Chênes"
         },
     },
+    "cer_comprehensive": {
+        "table": "cer_comprehensive_raw",
+        "comment": "CER incidents, comprehensive file (102 columns incl. short narratives); raw text columns per snapshot.",
+        "glob": "*.csv",
+        "options": {  # checked 2026-11-04 on 6 snapshots: same header, windows-1252, no line breaks in fields
+            "header": "true",
+            "multiLine": "true",
+            "escape": '"',
+            "encoding": "windows-1252",
+        },
+    },
     "phmsa_liquid": {
         "table": "phmsa_liquid_raw",
         "comment": "PHMSA hazardous liquid accidents, Jan 2010 to present; raw text columns per snapshot.",

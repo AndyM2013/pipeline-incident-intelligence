@@ -9,7 +9,7 @@ FROM pipeline_intel.silver.operator
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
--- 2. One fact per current incident. Expect cer 2,034 and phmsa 6,052, missing = 0, duplicates = 0.
+-- 2. One fact per current incident. Expect cer 2,039 (2,034 before the 2026-11-04 snapshot) and phmsa 6,052, missing = 0, duplicates = 0.
 WITH scd AS (
   SELECT 'cer' AS source, incident_number AS incident_id FROM pipeline_intel.silver.cer_incident WHERE __END_AT IS NULL
   UNION ALL

@@ -1,7 +1,7 @@
 # Week 3 design — conformance: units, operators, `gold.incident_fact`
 
 Status: 2026-11-04. Built: cause taxonomy (`reference/cause_taxonomy.csv`), operator map (`reference/operator_map.csv`,
-`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. Open: CER comprehensive file as a second source, TSB 2025.
+`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. CER comprehensive file landed and reconciled (Bronze only; Silver waits on decision 4b). Open: TSB 2025.
 
 ## What the profile showed (2026-11-04, current snapshots)
 
@@ -124,19 +124,29 @@ Counts by year and province / state against published figures. What exists (sear
   from a browser, then land it in the Volume like any snapshot. Its counts come from the same flagged files we load,
   so differences come from filters (onshore / offshore, gravity lines, report date vs accident year).
 
-### Finding: CER does publish narratives
+### Finding: the comprehensive file has detailed cause codes, not narratives (corrected 2026-11-04)
 
-The comprehensive file has `Detailed what happened` and `Detailed why it happened` (99% filled, median 76 and
-92 characters, p90 186 and 263; no emails or phone numbers found) next to the coded categories. It also has
-`Occurrence Date and Time` (75% filled), `Year`, `Number of fatalities`, `Number of individuals injured`,
-`Released volume (m3)`, `Released substance type`, and the pipe and inspection attributes (5-27% filled).
-CLAUDE.md says CER has no narrative: that is true of the 16-column file only.
+A first profile of `Detailed what happened` / `Detailed why it happened` (99% filled, median 76 and 92 characters)
+was read as short narratives. Reading the values after loading showed they are **coded sub-categories**: a
+semicolon list of comma paths, e.g. "Damage or deterioration mechanism, Equipment, Valve Seals or Packing" or
+"Job or system factors, Inadequate maintenance, Inadequate preventive, Assessment of needs". 6,531 items in the
+2026-11-04 file, 228 distinct, 1 ending like a sentence. CER publishes no free-text narrative in either file.
 
-Consequence if we switch the CER source: a second, native evaluation set. The LLM classifies CER's own short
-narratives into CER's own causes, with no mapping judgment. That is cleaner ground truth than PHMSA plus the
-taxonomy. History is not lost: the Internet Archive has 5 distinct captures (2024-03-30, 2024-07-15, 2024-09-04,
-2025-04-21, 2026-09-02) plus the live file. Cost: a new Bronze table and a Silver view per file, and a re-profile
-(the date format already differs: `Reported Date` is `08/10/2023` here).
+What the comprehensive file does add over the 16-column file: a finer, hierarchical cause coding (228 sub-codes
+under the 16 categories); `Occurrence Date and Time` (75% filled, with a time zone) and `Discovered Date and Time`;
+counts (`Number of fatalities` 6, `Number of individuals injured` 125, people evacuated); `Country`; pipeline and
+facility names; and pipe, coating, inspection and maintenance attributes (2-27% filled).
+
+So the "native CER evaluation set" consequence does not hold: LLM extraction stays PHMSA-only, scored through the
+taxonomy. Landed 2026-11-04 as `cer_comprehensive/<date>/` (5 archive captures 2024-03-30 to 2026-09-02, plus
+2026-11-04) into `bronze.cer_comprehensive_raw`: 1,862 -> 2,039 rows, key unique, 0 rescued, windows-1252.
+
+### Reconciliation: CER 16-column file vs comprehensive file (`sql/25`, checks 2 and 2b)
+
+Compared on the two dates both were landed (2024-09-04: 1,887 incidents; 2026-11-04: 2,039; today's 16-column file
+was landed as a normal new snapshot for this). Same incidents in both files, and all 15 shared columns identical,
+except `reported_date`, which differs in format only (parsed dates equal for every incident). The 16-column file is
+an exact projection of the comprehensive file.
 
 ### First reconciliation: PHMSA states (all 52, run 2026-11-04, data as of 2026-11-03)
 
@@ -161,6 +171,10 @@ compares all 832 state x year cells and the national years: 0 differences, 5,792
    (Canadian business sold 2026-05), and Ozark's Enbridge-era reports count under no group.
 4. **CER comprehensive file.** Decided 2026-11-04: add it as a second CER source, keep the 16-column file and its
    history, land the comprehensive file and its 5 archive captures as `cer_comprehensive/<date>/`, reconcile the two.
+   Done 2026-11-04 (Bronze and reconciliation).
+4b. **Silver for the comprehensive file: open.** The decision above assumed narratives, which it does not have.
+   Options: (a) a narrow `silver.cer_incident_detail` snapshot view (occurrence datetime, counts, detailed cause
+   codes, pipe attributes) joined to the 16-column history by key; (b) leave it in Bronze until a use needs it.
 5. **Published summaries.** PHMSA: scripted, done 2026-11-04 (`scripts/fetch_phmsa_trends.py`, below).
    TSB 2025: still needs saving from a browser.
 
