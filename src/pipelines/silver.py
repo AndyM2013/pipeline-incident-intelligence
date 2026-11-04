@@ -11,7 +11,12 @@ Design choices:
 - Expectations warn, except a missing key, which stops the update: history cannot be built without it.
 - try_cast / try_to_date, because serverless runs ANSI mode: a bad value becomes null and an expectation counts it,
   instead of failing the whole update.
+- The mapped cause (taxonomy_*) comes from reference/cause_taxonomy.csv, deployed with the bundle. It is our
+  interpretation, not the regulator's, so history.py drops it before diffing: revising a judgment call must not
+  look like an incident update.
 """
+
+import csv
 
 from pyspark.sql import Column
 from pyspark.sql import functions as F
@@ -80,6 +85,47 @@ def only_known(col: str, labels: list[str]) -> str:
     return f"size(array_except(coalesce({col}, array()), array({quoted}))) = 0"
 
 
+# Cause taxonomy: PHMSA cause details -> CER immediate causes. Reviewed 2026-11-02.
+TAXONOMY_COLUMNS = ["source", "source_cause", "source_cause_detail", "taxonomy_cause", "mapping", "incidents", "rationale"]
+TAXONOMY_MAPPINGS = ["direct", "judgment", "excluded"]
+
+
+def read_taxonomy(path: str) -> list[dict]:
+    """CSV rows with empty strings as None. Read in Python: the file is a workspace file, not a Volume file."""
+    with open(path, newline="", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    return [{k: (v or None) for k, v in row.items()} for row in rows]
+
+
+def taxonomy_key(source_cause: str, source_cause_detail) -> str:
+    return f"{source_cause}|{source_cause_detail or ''}"
+
+
+def taxonomy_map(rows: list[dict], source: str, field: str) -> Column:
+    """Literal map (cause|detail) -> field, for one source. Small enough to inline in the plan."""
+    pairs = [(taxonomy_key(r["source_cause"], r["source_cause_detail"]), r[field]) for r in rows if r["source"] == source]
+    return F.create_map(*[F.lit(x) for pair in pairs for x in pair])
+
+
+def taxonomy_rows() -> list[dict]:
+    return read_taxonomy(spark.conf.get("cause_taxonomy_path"))  # noqa: F821
+
+
+@materialized_view(
+    name="silver.cause_taxonomy",
+    comment="Cause taxonomy: CER immediate causes, and PHMSA cause / cause details mapped onto them. "
+    "Source: reference/cause_taxonomy.csv in the repo.",
+)
+@dp.expect_or_fail("known_mapping", "mapping IN (" + ", ".join(f"'{m}'" for m in TAXONOMY_MAPPINGS) + ")")
+@dp.expect("excluded_has_no_cause", "(mapping = 'excluded') = (taxonomy_cause IS NULL)")
+def cause_taxonomy():
+    rows = taxonomy_rows()
+    df = spark.createDataFrame(  # noqa: F821
+        [tuple(r[c] for c in TAXONOMY_COLUMNS) for r in rows], schema=", ".join(f"{c} string" for c in TAXONOMY_COLUMNS)
+    )
+    return df.withColumn("incidents", F.expr("try_cast(incidents AS int)"))
+
+
 CER_EXPECTATIONS = {
     "key_format": r"incident_number RLIKE '^INC[0-9]{4}-[0-9]{3}$'",
     "reported_date_parsed": "reported_date IS NOT NULL",
@@ -91,6 +137,7 @@ CER_EXPECTATIONS = {
     "longitude_in_canada": "longitude BETWEEN -142 AND -52",
     "volume_parsed": "volume_reported <> 'unparsed'",
     "volume_not_negative": "volume_released_m3 IS NULL OR volume_released_m3 >= 0",
+    "immediate_causes_mapped": "coalesce(size(taxonomy_causes), 0) = coalesce(size(immediate_causes), 0)",
 }
 
 
@@ -131,7 +178,14 @@ def cer_incident_snapshot():
         not_applicable_to_null("substance").alias("substance"),
         (F.col("significant") == "Yes").alias("significant"),
         "_snapshot_date",
-    )
+    ).withColumn("taxonomy_causes", cer_taxonomy_causes("immediate_causes"))
+
+
+def cer_taxonomy_causes(col: str) -> Column:
+    """Immediate causes found in the taxonomy. Identity today; an unmapped label drops out and an expectation counts it."""
+    to_taxonomy = taxonomy_map(taxonomy_rows(), "cer", "taxonomy_cause")
+    mapped = F.transform(F.col(col), lambda x: F.try_element_at(to_taxonomy, F.concat(x, F.lit("|"))))
+    return F.array_sort(F.array_distinct(F.filter(mapped, lambda x: x.isNotNull())))
 
 
 # PHMSA hazardous liquid. Profiled 2026-11-01 (one snapshot, 6,052 reports); see docs/week2-silver-design.md.
@@ -236,6 +290,7 @@ PHMSA_EXPECTATIONS = {
     "longitude_in_us": "longitude BETWEEN -180 AND -64",
     "volumes_not_negative": "coalesce(unintentional_release_bbls, 0) >= 0 AND coalesce(recovered_bbls, 0) >= 0",
     "narrative_present": "narrative IS NOT NULL",
+    "cause_mapped": "taxonomy_mapping IS NOT NULL",
 }
 
 
@@ -264,9 +319,17 @@ def phmsa_incident_snapshot():
         F.expr(f"try_to_timestamp({src}, '{PHMSA_DATETIME_FORMAT}')").alias(name)
         for name, src in PHMSA_TIMESTAMP.items()
     ]
-    return raw.select(
+    snapshot = raw.select(
         *columns,
         F.expr("try_to_date(report_received_date, 'M/d/yyyy')").alias("report_received_date"),
         redact_contacts("narrative").alias("narrative"),
         "_snapshot_date",
+    )
+    rows = taxonomy_rows()
+    key = F.concat(F.col("cause"), F.lit("|"), F.coalesce(F.col("cause_details"), F.lit("")))
+    return snapshot.select(
+        "*",
+        # null for UNKNOWN (mapping = 'excluded'): no ground truth, left out of extraction scoring
+        F.try_element_at(taxonomy_map(rows, "phmsa", "taxonomy_cause"), key).alias("taxonomy_cause"),
+        F.try_element_at(taxonomy_map(rows, "phmsa", "mapping"), key).alias("taxonomy_mapping"),
     )

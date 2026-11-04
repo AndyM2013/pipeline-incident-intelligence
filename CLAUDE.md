@@ -38,8 +38,10 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   (5,669 reports direct, 333 judgment calls with rationale, 50 UNKNOWN excluded from scoring).
   CER basic causes have no PHMSA equivalent and are not scored. Equipment Failure is 46% of PHMSA reports,
   so extraction is reported with macro-F1 and a confusion matrix, not accuracy alone.
-- Next: load the taxonomy as `silver.cause_taxonomy` and add the mapped cause to both Silver tables; then
-  barrels -> m³ in `gold.incident_fact`, operator resolution (`silver.operator`), reconciliation vs published summaries.
+- 2026-11-04: `silver.cause_taxonomy` (MV in `incident_ingest`, read in Python from the bundle-deployed CSV via the
+  `cause_taxonomy_path` setting). Snapshot views gain `taxonomy_causes` (CER) and `taxonomy_cause` / `taxonomy_mapping`
+  (PHMSA); every report maps. `history.py` drops them before diffing (`NOT_DIFFED`), so no versions opened. Checks 9-9d pass.
+- Next: barrels -> m³ in `gold.incident_fact`, operator resolution (`silver.operator`), reconciliation vs published summaries.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow

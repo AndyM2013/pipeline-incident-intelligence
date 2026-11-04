@@ -138,3 +138,27 @@ SELECT __START_AT AS snapshot_version, count(*) AS versions_opened, count_if(__E
 FROM pipeline_intel.silver.phmsa_incident
 GROUP BY 1
 ORDER BY 1;
+
+-- 9. Cause taxonomy. Expect phmsa direct 5,669 / judgment 333 / excluded 50, cer direct 7 rows.
+SELECT source, mapping, count(*) AS taxonomy_rows, sum(incidents) AS incidents_at_review
+FROM pipeline_intel.silver.cause_taxonomy
+GROUP BY 1, 2
+ORDER BY 1, 2;
+
+-- 9b. Every PHMSA report is mapped, and the counts still match the review. Expect unmapped = 0.
+SELECT taxonomy_mapping, count(*) AS reports, count_if(taxonomy_mapping IS NULL) AS unmapped
+FROM pipeline_intel.silver.phmsa_incident_snapshot
+GROUP BY 1
+ORDER BY 1;
+
+-- 9c. CER immediate causes map onto themselves. Expect differs = 0 in every snapshot.
+SELECT _snapshot_date, count(*) AS rows,
+       count_if(coalesce(taxonomy_causes, array()) <> coalesce(immediate_causes, array())) AS differs
+FROM pipeline_intel.silver.cer_incident_snapshot
+GROUP BY 1
+ORDER BY 1;
+
+-- 9d. The mapped cause is not diffed: adding it opened no versions. Expect cer 2,169 and phmsa 6,052 versions.
+SELECT 'cer' AS source, count(*) AS versions FROM pipeline_intel.silver.cer_incident
+UNION ALL
+SELECT 'phmsa', count(*) FROM pipeline_intel.silver.phmsa_incident;

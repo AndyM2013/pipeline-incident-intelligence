@@ -109,3 +109,57 @@ def test_redaction_catches_contact_shapes_seen_in_narratives():
 def test_redaction_leaves_report_facts_alone():
     for text in ["NRC1234567 AT 7/16/2011 19:40", "RELEASED 1,234.56 BBLS", "REPORT # 12-34567", "MP 123.4 TO 456.7"]:
         assert redact(text) == text
+
+
+TAXONOMY = SRC.parent.parent.parent / "reference" / "cause_taxonomy.csv"
+
+
+def load_function(path, name, namespace):
+    tree = ast.parse(path.read_text())
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == name)
+    exec(compile(ast.fix_missing_locations(ast.Module(body=[fn], type_ignores=[])), str(path), "exec"), namespace)
+    return namespace[name]
+
+
+taxonomy = load_function(SRC, "read_taxonomy", {"csv": __import__("csv")})(str(TAXONOMY))
+phmsa_rows = [r for r in taxonomy if r["source"] == "phmsa"]
+
+
+def test_taxonomy_csv_has_the_columns_the_pipeline_reads():
+    assert list(taxonomy[0]) == ns["TAXONOMY_COLUMNS"]
+    assert {r["mapping"] for r in taxonomy} <= set(ns["TAXONOMY_MAPPINGS"])
+
+
+def test_taxonomy_targets_are_cer_immediate_causes():
+    cer = {r["source_cause"] for r in taxonomy if r["source"] == "cer"}
+    assert len(cer) == 7 and cer <= set(ns["CER_CAUSES"])
+    assert {r["taxonomy_cause"] for r in taxonomy if r["taxonomy_cause"]} == cer
+
+
+def test_only_excluded_rows_have_no_target():
+    for r in taxonomy:
+        assert (r["mapping"] == "excluded") == (r["taxonomy_cause"] is None), r["source_cause_detail"]
+
+
+def test_phmsa_keys_are_unique_and_known():
+    keys = [(r["source_cause"], r["source_cause_detail"]) for r in phmsa_rows]
+    assert len(keys) == len(set(keys)) == 41
+    assert {r["source_cause"] for r in phmsa_rows} == set(ns["PHMSA_CAUSES"])
+
+
+def test_phmsa_coverage_matches_the_reviewed_counts():
+    by_mapping: dict = {}
+    for r in phmsa_rows:
+        by_mapping[r["mapping"]] = by_mapping.get(r["mapping"], 0) + int(r["incidents"])
+    assert by_mapping == {"direct": 5669, "judgment": 333, "excluded": 50}
+
+
+def test_judgment_calls_carry_a_rationale():
+    assert all(r["rationale"] for r in phmsa_rows if r["mapping"] == "judgment")
+
+
+def test_history_does_not_diff_the_mapped_cause():
+    added = set(re.findall(r'(?:alias|withColumn)\("(taxonomy_[a-z]+)"', SRC.read_text()))
+    assert added == {"taxonomy_causes", "taxonomy_cause", "taxonomy_mapping"}
+    not_diffed = ast.literal_eval(re.search(r"NOT_DIFFED = (\[.*\])", (SRC.parent / "history.py").read_text()).group(1))
+    assert added <= set(not_diffed)

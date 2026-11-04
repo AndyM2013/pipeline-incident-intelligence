@@ -10,6 +10,8 @@ Design choices:
 - A full refresh replays every snapshot in date order, so history rebuilds from the landing Volume.
 - Keys missing from a later snapshot are deleted: their last version gets an __END_AT and no successor.
 - _snapshot_date is dropped before diffing; it differs in every snapshot and would make every row a new version.
+- The mapped cause (taxonomy_*) is dropped too: it is our interpretation, not the regulator's. Join
+  silver.cause_taxonomy when history needs it.
 """
 
 from datetime import date
@@ -26,6 +28,8 @@ HISTORIES = {
     "cer_incident": ("cer_snapshot_table", ["incident_number"]),
     "phmsa_incident": ("phmsa_snapshot_table", ["report_number"]),
 }
+# Columns of the snapshot views that are not part of the regulator's record.
+NOT_DIFFED = ["_snapshot_date", "taxonomy_causes", "taxonomy_cause", "taxonomy_mapping"]
 
 
 def version_of(snapshot_date: date) -> int:
@@ -43,7 +47,7 @@ def next_snapshot(table: str):
         next_date = dates.agg(F.min("_snapshot_date")).first()[0]
         if next_date is None:
             return None
-        return snapshots.where(F.col("_snapshot_date") == next_date).drop("_snapshot_date"), version_of(next_date)
+        return snapshots.where(F.col("_snapshot_date") == next_date).drop(*NOT_DIFFED), version_of(next_date)
 
     return _next
 
