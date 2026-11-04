@@ -9,7 +9,7 @@ Runs on your own machine, like fetch_snapshots.py (needs requirements-browser.tx
 
     python scripts/fetch_phmsa_trends.py                     # national: year x onshore/offshore
     python scripts/fetch_phmsa_trends.py --state TEXAS       # one state (repeatable)
-    python scripts/fetch_phmsa_trends.py --all-states        # every state, one export each (~1 min per state)
+    python scripts/fetch_phmsa_trends.py --all-states        # every state, one export each (~10 s per state, ~9 min)
     python scripts/fetch_phmsa_trends.py --no-upload
 
 Lands under the Volume's landing root, next to the sources but never read by Bronze:
@@ -134,15 +134,23 @@ def main(argv: list[str] | None = None) -> int:
         page.goto(ENTRY_URL, wait_until="load", timeout=LOAD_TIMEOUT_MS)
         as_of = None
         items = []
+        failed: dict[str, str] = {}
         for state in scopes:
-            content = export_csv(page, state)
-            exported[file_name(state)] = check_export(content, state)
+            try:  # one slow or empty state must not cost the other 51 exports
+                content = export_csv(page, state)
+                exported[file_name(state)] = check_export(content, state)
+            except Exception as exc:  # noqa: BLE001  (reported below and in export_info.json)
+                failed[state or "national"] = f"{type(exc).__name__}: {str(exc).splitlines()[0]}"
+                print(f"FAILED {state or 'national'}: {failed[state or 'national']}")
+                continue
             as_of = as_of or data_as_of(page)
             items.append(Landed(SOURCE, today, file_name(state), "data", content))
             print(f"export {state or 'national'}: {exported[file_name(state)]} rows")
         browser.close()
 
     info = {"dashboard": f"{DASHBOARD} / {PAGE}", "system_type": SYSTEM_TYPE, "data_as_of": as_of, "rows": exported}
+    if failed:
+        info["failed"] = failed
     print(f"dashboard data as of {as_of}")
     items.append(Landed(SOURCE, today, "export_info.json", "data", (json.dumps(info, indent=2) + "\n").encode()))
     for item in items:
@@ -159,8 +167,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"landed {item.relative_path}  ({len(item.content):,} bytes)")
 
     MANIFEST_FILE.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    print(f"{landed_count} file(s) landed")
-    return 0
+    print(f"{landed_count} file(s) landed, {len(failed)} export(s) failed")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

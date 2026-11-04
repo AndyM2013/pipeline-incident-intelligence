@@ -108,6 +108,19 @@ taxonomy. History is not lost: the Internet Archive has 5 distinct captures (202
 2025-04-21, 2026-09-02) plus the live file. Cost: a new Bronze table and a Silver view per file, and a re-profile
 (the date format already differs: `Reported Date` is `08/10/2023` here).
 
+### First reconciliation: PHMSA states (all 52, run 2026-11-04, data as of 2026-11-03)
+
+847 state x year cells (2010-2025) compared with Silver; 31 differ, all explained by one cause:
+
+- Silver's `state` is `onshore_state_abbreviation` only. PHMSA's trend assigns offshore incidents in state waters to
+  that state (`offshore_state_abbreviation`): 19 LA, 1 CA (2022), 1 TX (2021, the Texas off-by-one above).
+- The other 37 offshore reports have no state in either column (federal waters); PHMSA counts them in no state.
+
+Fix (proposed): Silver adds `offshore_state`, and `gold.incident_fact.region` = onshore state, else offshore state.
+Adding a column to `phmsa_incident_snapshot` changes what history diffs: the next PHMSA snapshot would open ~21 false
+versions unless `incident_history` is fully refreshed once (rebuilds from the Volume), or the column is added in Gold
+from Bronze instead. Needs a decision before building.
+
 ## Decisions needed
 
 1. **Liquid volume for PHMSA.** Use unintentional only (proposed: comparable with a CER spill; blowdowns are
@@ -132,7 +145,7 @@ barrels spilled, net barrels lost, plus 3/5/10/20-year averages.
 
 First run (data as of 2026-11-03): national hazardous liquid incidents equal our Silver counts by accident year for
 every year 2010-2025. Texas equals ours in every year except 2021 (published 174, Silver 173): the first real
-reconciliation item. `--all-states` exports every state, about a minute each.
+reconciliation item. `--all-states` exports every state one after another, about 10 seconds each (~9 minutes).
 
 ## Acceptance checks (to add as `sql/30_gold_checks.sql`)
 
