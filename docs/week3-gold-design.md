@@ -1,7 +1,8 @@
 # Week 3 design — conformance: units, operators, `gold.incident_fact`
 
 Status: 2026-11-05. Built: cause taxonomy (`reference/cause_taxonomy.csv`), operator map (`reference/operator_map.csv`,
-`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. CER comprehensive file landed and reconciled (Bronze only, decision 4b). Open: TSB 2025.
+`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. CER comprehensive file landed and reconciled (Bronze only, decision 4b). TSB occurrence data in Bronze (June 2025 archive copy) and reconciled by year and
+province; today's copy waits on a browser download. Open: decisions 6-7.
 
 ## What the profile showed (2026-11-04, current snapshots)
 
@@ -117,8 +118,7 @@ Counts by year and province / state against published figures. What exists (sear
   federally regulated pipelines, in HTML tables: occurrences by year (Table 1) and by province (Table 2), plus
   product type and volume bands. Editions 2021-2025 are listed. TSB counts "reportable occurrences" under its own
   rules, so totals differ by design: 2022 TSB 67 vs CER 148, 2012 TSB 180 vs CER 159. The check is to explain the
-  gap by definition, not to match. The 2025 edition blocks scripted download and is not archived. It would have
-  to be saved from a browser and landed by hand (2022 is readable).
+  gap by definition, not to match. Superseded 2026-11-05 by the occurrence-level file below.
 - **PHMSA** "Pipeline Incident 20 Year Trends" (All Reported, filter System Type = Hazardous Liquid, by state) is an
   Oracle Analytics dashboard that needs JavaScript and a session. It cannot be fetched by script. Export to Excel
   from a browser, then land it in the Volume like any snapshot. Its counts come from the same flagged files we load,
@@ -147,6 +147,39 @@ Compared on the two dates both were landed (2024-09-04: 1,887 incidents; 2026-11
 was landed as a normal new snapshot for this). Same incidents in both files, and all 15 shared columns identical,
 except `reported_date`, which differs in format only (parsed dates equal for every incident). The 16-column file is
 an exact projection of the comprehensive file.
+
+### TSB occurrence data (added 2026-11-05)
+
+TSB publishes the rows behind its summaries: "Pipeline transportation occurrence data from January 1979"
+(open.canada.ca dataset `3f273148-3aaf-4194-b846-04fbf524e476`): `PODSdb_MDOTW_VW_OCCURRENCE_PUBLIC.csv`, an
+injuries file and a data dictionary. tsb.gc.ca answers every scripted request with 403 from its application
+gateway (summary pages, CSVs and `robots.txt`), and we do not disguise the client. So:
+
+- The Internet Archive's one capture (2025-06-13) is landed as `tsb/2025-06-13/` with `--wayback 20250613`; the
+  dictionary is not archived.
+- Today's copy is saved from a browser and landed with `scripts/fetch_snapshots.py --source tsb --from-dir <dir>`
+  (same manifest, same dated folder; the date defaults to today).
+- The injuries file is not landed: the occurrence file has `TotalFatalInjuries` / `TotalSeriousInjuries`.
+
+Profile of the 2025-06-13 capture, read in `bronze.tsb_occurrence_raw`: UTF-8 with BOM (not windows-1252 like CER),
+117 columns (each code with English and French labels), 3,343 rows, 3,340 occurrences (`P21H0022` repeated 4 times,
+identical rows), 1979-2025, 0 rescued rows.
+
+**`OccSummary` is a free-text narrative**, the first Canadian one in the project: 3,338 filled, median 282
+characters, 3,190 ending like a sentence, and read as prose in samples ("A technician responded to an emergency shut
+down at the Ile Des Chenes Compressor Station ... causing a fuel gas release from a 1/2 inch line"). No emails;
+the 5 phone-like matches are NEB safety-order numbers. Names are not checked, so the `ai_mask` rule for PHMSA
+narratives applies here too. TSB has **no coded cause**: the threat / hazard fields are blank in 97% / 87% of
+2010+ rows.
+
+Reconciliation (`sql/25`, checks 3 and 3b): totals differ by definition (TSB reportable occurrences vs CER OPR
+incidents). TSB counts more until 2014 and fewer from 2015 (2022: 68 vs 148); the file reproduces TSB's own
+summary for 2012 (180) and differs by 1 for 2022 (68 vs 67). By province 2010-2024, NWT (45 vs 10), BC (357 vs 511)
+and Alberta (536 vs 638) differ most.
+
+There is no shared key. A trial match on occurrence date (CER occurrence date, else reported date) within 1 day,
+province and the first 6 letters of the operator name finds exactly one CER incident for 36-66% of TSB occurrences
+per year (2010-2024), several for up to 31 per year. That is a heuristic link, not a reconciliation: decision 7.
 
 ### First reconciliation: PHMSA states (all 52, run 2026-11-04, data as of 2026-11-03)
 
@@ -178,7 +211,14 @@ compares all 832 state x year cells and the national years: 0 differences, 5,792
    Decided 2026-11-05: (b). Nothing in Weeks 4-7 reads it; Bronze keeps every snapshot and rebuilds from the Volume.
    Revisit if Gold needs CER occurrence time instead of reported date, or the agent needs fatality / injury counts.
 5. **Published summaries.** PHMSA: scripted, done 2026-11-04 (`scripts/fetch_phmsa_trends.py`, below).
-   TSB 2025: still needs saving from a browser.
+   TSB: superseded by the occurrence file, landed 2026-11-05 from the June 2025 archive copy; today's copy needs
+   saving from a browser (the site refuses scripted clients).
+6. **TSB Silver.** Open. Options: (a) `silver.tsb_occurrence_snapshot` (typed, deduplicated, `OccSummary` with emails
+   and phones redacted like PHMSA) so TSB narratives can join the Week 4 `ai_mask` pass and later retrieval;
+   (b) Bronze only, reconciliation by count. Recommended: (a), once today's copy is landed.
+7. **TSB-CER link.** Open. A dated, rule-based match (date, province, operator) would attach CER coded causes to TSB
+   narratives: a Canadian evaluation set for cause extraction. Needs its own design: match rules, ambiguous
+   candidates, and a manual review sample before any score uses it.
 
 ### PHMSA trend export (`scripts/fetch_phmsa_trends.py`)
 

@@ -7,6 +7,9 @@ Runs on your own machine (Free Edition notebooks can only reach a short list of 
     python scripts/fetch_snapshots.py --source cer --wayback 20240601
                                                               # a historical copy from the Internet Archive,
                                                               # dated by the capture it actually returns
+    python scripts/fetch_snapshots.py --source tsb --from-dir ~/Downloads
+                                                              # files saved from a browser (sites that refuse
+                                                              # scripted clients); dated today, or --date
     python scripts/fetch_snapshots.py --no-upload             # download only, upload later
     python scripts/fetch_snapshots.py --profile DEFAULT       # pick a CLI profile when several match the workspace
 
@@ -105,12 +108,30 @@ def download(url: str, wayback: str | None) -> tuple[bytes, str | None]:
     return resp.content, date
 
 
-def collect(source: str, spec: dict, wayback: str | None, today: str) -> list[Landed]:
+def read_saved(directory: Path, name: str) -> bytes:
+    """A file saved from a browser under its published name."""
+    path = directory.expanduser() / name
+    if not path.is_file():
+        raise FileNotFoundError(f"{path} not found: save it from the source page under its published name")
+    return path.read_bytes()
+
+
+def collect(source: str, spec: dict, wayback: str | None, today: str, from_dir: Path | None = None) -> list[Landed]:
     landed: list[Landed] = []
     for f in spec["files"]:
-        content, archived_date = download(f["url"], wayback)
-        date = archived_date or today
         name = Path(f["url"].split("?")[0]).name
+        if from_dir:
+            content, archived_date = read_saved(from_dir, name), None
+        else:
+            try:
+                content, archived_date = download(f["url"], wayback)
+            except requests.HTTPError as err:
+                # The archive often has the data file but not its dictionary; a capture is still usable.
+                if wayback and f["role"] == "dictionary" and err.response is not None and err.response.status_code == 404:
+                    print(f"note   {source}: {name} not in the archive near {wayback}; landing without it")
+                    continue
+                raise
+        date = archived_date or today
         if f["role"] == "zip":
             landed.extend(split_zip(source, date, content, f.get("data_glob", "*.txt")))
         else:
@@ -134,11 +155,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--source", action="append", help="Source key from sources.json (repeatable). Default: all.")
     parser.add_argument("--wayback", metavar="YYYYMMDD", help="Fetch the Internet Archive capture nearest this date.")
+    parser.add_argument("--from-dir", type=Path, help="Read files saved from a browser here instead of downloading.")
+    parser.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date for --from-dir (default: today).")
     parser.add_argument("--catalog", default="pipeline_intel")
     parser.add_argument("--profile", help="Databricks CLI profile (from ~/.databrickscfg) used for uploads.")
     parser.add_argument("--no-upload", action="store_true", help="Write locally only.")
     parser.add_argument("--force", action="store_true", help="Land files even if identical content was seen before.")
     args = parser.parse_args(argv)
+    if args.from_dir and args.wayback:
+        parser.error("--from-dir and --wayback are exclusive")
+    if args.date and not args.from_dir:
+        parser.error("--date only applies to --from-dir")
 
     sources = {k: v for k, v in json.loads(SOURCES_FILE.read_text()).items() if not k.startswith("_")}
     wanted = args.source or list(sources)
@@ -147,11 +174,11 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"unknown source(s): {', '.join(sorted(unknown))}")
 
     manifest = json.loads(MANIFEST_FILE.read_text()) if MANIFEST_FILE.exists() else {}
-    today = dt.date.today().isoformat()
+    today = (args.date or dt.date.today()).isoformat()
     landed_count = 0
 
     for source in wanted:
-        for item in collect(source, sources[source], args.wayback, today):
+        for item in collect(source, sources[source], args.wayback, today, args.from_dir):
             if not args.force and already_recorded(manifest, item):
                 print(f"skip   {item.relative_path}  (same content as an earlier snapshot)")
                 continue

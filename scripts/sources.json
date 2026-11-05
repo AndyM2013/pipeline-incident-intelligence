@@ -23,11 +23,24 @@
     ]
   },
   "cer_comprehensive": {
-    "_comment": "Same incidents as cer, 102 columns incl. short narratives and occurrence date. Source page https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1 (checked 2026-11-04). The cer data dictionary describes these columns.",
+    "_comment": "Same incidents as cer, 102 columns incl. detailed cause codes (not narratives) and occurrence date. Source page https://open.canada.ca/data/en/dataset/7dffedc4-23fa-440c-a36d-adf5a6cc09f1 (checked 2026-11-04). The cer data dictionary describes these columns.",
     "files": [
       {
         "url": "https://www.cer-rec.gc.ca/open/incident/pipeline-incidents-comprehensive-data.csv",
         "role": "data"
+      }
+    ]
+  },
+  "tsb": {
+    "_comment": "TSB pipeline occurrences since 1979. Source page https://open.canada.ca/data/en/dataset/3f273148-3aaf-4194-b846-04fbf524e476 (checked 2026-11-05). tsb.gc.ca refuses scripted clients (403 from its application gateway), so today's copy is saved from a browser and landed with --from-dir; archive captures work with --wayback.",
+    "files": [
+      {
+        "url": "https://www.tsb.gc.ca/sites/default/files/stats/PODSdb_MDOTW_VW_OCCURRENCE_PUBLIC.csv",
+        "role": "data"
+      },
+      {
+        "url": "https://www.tsb.gc.ca/sites/default/files/data/en/PODSdb-dd.csv",
+        "role": "dictionary"
       }
     ]
   }

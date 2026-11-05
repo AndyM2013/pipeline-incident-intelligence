@@ -143,3 +143,47 @@ FROM pipeline_intel.bronze.cer_incident_raw s
 JOIN pipeline_intel.bronze.cer_comprehensive_raw c USING (incident_number, _snapshot_date)
 GROUP BY 1
 ORDER BY 1;
+
+-- 3. TSB occurrences against CER incidents by year (TSB occurrence date, CER year column). TSB counts reportable
+--    occurrences under the TSB Regulations, CER counts incidents under the OPR, so totals differ by definition and
+--    are compared, not matched. TSB's 2022 annual summary reports 180 for 2012 and 67 for 2022; this file has 180
+--    and 68 (cause of the 1 not checked). P21H0022 is repeated 4 times in the file and counted once.
+--    2025-06-13 capture: TSB above CER until 2014, below from 2015 except 2024 (63 vs 62); 2022: 68 vs 148.
+WITH t AS (
+  SELECT DISTINCT occno, year(to_date(split(occdate, ' ')[0], 'M/d/yyyy')) AS y, occtypeid_displayeng AS occ_type
+  FROM pipeline_intel.bronze.tsb_occurrence_raw
+  WHERE _snapshot_date = (SELECT max(_snapshot_date) FROM pipeline_intel.bronze.tsb_occurrence_raw)
+),
+c AS (
+  SELECT int(year) AS y, count(*) AS cer_incidents
+  FROM pipeline_intel.bronze.cer_incident_raw
+  WHERE _snapshot_date = (SELECT max(_snapshot_date) FROM pipeline_intel.bronze.cer_incident_raw)
+  GROUP BY 1
+)
+SELECT t.y AS year, count(*) AS tsb_occurrences, count_if(occ_type = 'ACCIDENT') AS tsb_accidents,
+       any_value(c.cer_incidents) AS cer_incidents
+FROM t LEFT JOIN c USING (y)
+WHERE t.y >= 2008
+GROUP BY 1
+ORDER BY 1;
+
+-- 3b. The same by province, 2010-2024 (full years in both files). 2025-06-13 capture: every province in both,
+--     plus 1 TSB occurrence in Nunavut that CER does not list; NWT 45 vs 10, BC 357 vs 511, Alberta 536 vs 638.
+WITH t AS (
+  SELECT DISTINCT occno, initcap(provinceid_displayeng) AS province
+  FROM pipeline_intel.bronze.tsb_occurrence_raw
+  WHERE _snapshot_date = (SELECT max(_snapshot_date) FROM pipeline_intel.bronze.tsb_occurrence_raw)
+    AND year(to_date(split(occdate, ' ')[0], 'M/d/yyyy')) BETWEEN 2010 AND 2024
+),
+c AS (
+  SELECT initcap(province) AS province, count(*) AS cer_incidents
+  FROM pipeline_intel.bronze.cer_incident_raw
+  WHERE _snapshot_date = (SELECT max(_snapshot_date) FROM pipeline_intel.bronze.cer_incident_raw)
+    AND int(year) BETWEEN 2010 AND 2024
+  GROUP BY 1
+)
+SELECT coalesce(t.province, c.province) AS province, count(t.occno) AS tsb_occurrences,
+       any_value(c.cer_incidents) AS cer_incidents
+FROM t FULL JOIN c USING (province)
+GROUP BY 1
+ORDER BY 2 DESC;

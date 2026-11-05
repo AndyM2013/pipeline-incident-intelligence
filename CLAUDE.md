@@ -55,7 +55,11 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   the two files hold the same incidents and identical shared values (only the `reported_date` format differs).
   Its "Detailed what/why happened" columns turned out to be cause sub-codes, not narratives (review log).
 - 2026-11-05: Decision 4b: the comprehensive file stays in Bronze until a use needs it (no Silver view).
-- Next: TSB 2025 tables (saved from a browser). Then Week 4: `ai_mask` name pass over PHMSA narratives, before any extraction.
+- 2026-11-05: TSB occurrence data (open.canada.ca 3f273148, 1979-2025) in `bronze.tsb_occurrence_raw` from the
+  2025-06-13 archive capture; tsb.gc.ca refuses scripted clients, so `fetch_snapshots.py --from-dir` lands browser
+  downloads. `sql/25` checks 3-3b compare TSB and CER by year and province (differ by definition).
+  `OccSummary` is a Canadian narrative (3,338 filled). Decisions 6 (TSB Silver) and 7 (TSB-CER link) open.
+- Next: save today's TSB files from a browser and land them; decisions 6-7. Then Week 4: `ai_mask` name pass over PHMSA narratives, before any extraction.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -78,6 +82,10 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   narratives**. Adds occurrence datetime, fatality / injury counts, pipe attributes. Loaded in Bronze only.
 - CER publishes no free-text narrative in either file. Narratives for extraction and retrieval come from PHMSA;
   CER supplies Canadian facts and a clean cause taxonomy.
+- TSB occurrence data (`tsb/<date>/PODSdb_MDOTW_VW_OCCURRENCE_PUBLIC.csv`, checked 2026-11-05): UTF-8 with BOM, 117
+  columns, 3,343 rows (2025-06-13 capture), key `occno` (P21H0022 repeated 4 times, identical). `OccSummary` is a
+  free-text narrative (median 282 characters); no coded cause. No shared key with CER. tsb.gc.ca returns 403 to
+  scripted clients: save from a browser, never disguise the client. Same `ai_mask` rule as PHMSA narratives.
 
 - CER history in Bronze (first load 2026-11-01): 5 snapshots, 1,655 -> 1,887 -> 1,923 -> 1,954 -> 2,034 rows; key unique in each.
   New incidents per snapshot: 236, 36, 32, 81. Changed incidents: 1,651 (2024-09-04 — every one is a `reported_date`
@@ -131,6 +139,10 @@ Record each time generated code needed a fix: what was wrong, how it was caught.
   after loading showed coded sub-category paths ("Damage or deterioration mechanism, Equipment, Valve Seals or
   Packing"); CER has no narrative in either file. Caught by a per-column profile before writing Silver. Lesson: a
   length profile does not tell prose from codes; read sample values (and the 2026-10-30 entry above said so).
+- 2026-11-05 — The plan said Canadian narratives do not exist and that TSB 2025 had to be copied from HTML tables.
+  TSB publishes the occurrence rows behind those tables, with a narrative column, as a separate open.canada.ca
+  dataset. Caught when the summary pages refused scripts and the open.canada.ca catalogue was searched for another
+  route. Same lesson as the CER comprehensive file: search the publisher's catalogue before concluding data is missing.
 - 2026-11-04 — The Week 3 design listed Plains as a cross-border group and said Express joined Enbridge in 2013.
   Checking today's owner for each group (decision 3) showed Keyera bought Plains Midstream Canada in 2026-05, and
   Express went to Spectra in 2013 and to Enbridge only with the 2017 merger. Lesson: a parent group is a dated fact;

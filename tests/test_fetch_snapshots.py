@@ -49,3 +49,18 @@ def test_identical_content_is_not_a_new_snapshot():
     fs.record(manifest, first)
     assert fs.already_recorded(manifest, fs.Landed("cer", "2026-10-30", "data.csv", "data", b"same"))
     assert not fs.already_recorded(manifest, fs.Landed("cer", "2026-10-30", "data.csv", "data", b"changed"))
+
+
+def test_saved_files_land_under_their_published_names_dated_today(tmp_path):
+    (tmp_path / "occ.csv").write_bytes(b"a,b\n1,2\n")
+    (tmp_path / "dd.csv").write_bytes(b"field,meaning\n")
+    spec = {"files": [{"url": "https://example.org/x/occ.csv", "role": "data"},
+                      {"url": "https://example.org/y/dd.csv", "role": "dictionary"}]}
+    landed = fs.collect("tsb", spec, None, "2026-11-05", from_dir=tmp_path)
+    assert [i.relative_path for i in landed] == ["tsb/2026-11-05/occ.csv", "_dictionaries/tsb/2026-11-05/dd.csv"]
+
+
+def test_missing_saved_file_fails_loudly(tmp_path):
+    spec = {"files": [{"url": "https://example.org/x/occ.csv", "role": "data"}]}
+    with pytest.raises(FileNotFoundError):
+        fs.collect("tsb", spec, None, "2026-11-05", from_dir=tmp_path)

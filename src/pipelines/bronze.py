@@ -48,6 +48,17 @@ SOURCES = {
             "encoding": "windows-1252",
         },
     },
+    "tsb": {
+        "table": "tsb_occurrence_raw",
+        "comment": "TSB pipeline occurrences since 1979 (117 columns incl. OccSummary narrative); raw text columns per snapshot.",
+        "glob": "*OCCURRENCE*.csv",
+        "options": {  # checked 2026-11-05 on the 2025-06-13 capture: UTF-8 with BOM (not windows-1252), CRLF
+            "header": "true",
+            "multiLine": "true",
+            "escape": '"',
+            "encoding": "UTF-8",
+        },
+    },
     "phmsa_liquid": {
         "table": "phmsa_liquid_raw",
         "comment": "PHMSA hazardous liquid accidents, Jan 2010 to present; raw text columns per snapshot.",
