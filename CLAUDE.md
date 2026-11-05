@@ -58,8 +58,10 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - 2026-11-05: TSB occurrence data (open.canada.ca 3f273148, 1979-2025) in `bronze.tsb_occurrence_raw` from the
   2025-06-13 archive capture; tsb.gc.ca refuses scripted clients, so `fetch_snapshots.py --from-dir` lands browser
   downloads. `sql/25` checks 3-3b compare TSB and CER by year and province (differ by definition).
-  `OccSummary` is a Canadian narrative (3,338 filled). Decisions 6 (TSB Silver) and 7 (TSB-CER link) open.
-- Next: save today's TSB files from a browser and land them; decisions 6-7. Then Week 4: `ai_mask` name pass over PHMSA narratives, before any extraction.
+  `OccSummary` is a Canadian narrative (3,338 filled). Decision 7 (TSB-CER link) open.
+- 2026-11-05: Decision 6: `silver.tsb_occurrence_snapshot` (MV in `incident_ingest`, 3,340 rows, English labels,
+  summary redacted for emails / phones). Checks 10-10b pass.
+- Next: save today's TSB files from a browser and land them; decision 7. Then Week 4: `ai_mask` name pass over PHMSA and TSB narratives, before any extraction.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow
@@ -85,7 +87,8 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
 - TSB occurrence data (`tsb/<date>/PODSdb_MDOTW_VW_OCCURRENCE_PUBLIC.csv`, checked 2026-11-05): UTF-8 with BOM, 117
   columns, 3,343 rows (2025-06-13 capture), key `occno` (P21H0022 repeated 4 times, identical). `OccSummary` is a
   free-text narrative (median 282 characters); no coded cause. No shared key with CER. tsb.gc.ca returns 403 to
-  scripted clients: save from a browser, never disguise the client. Same `ai_mask` rule as PHMSA narratives.
+  scripted clients: save from a browser, never disguise the client. Same `ai_mask` rule as PHMSA narratives:
+  LLM extraction and Vector Search must not read `silver.tsb_occurrence_snapshot.summary` before the name pass.
 
 - CER history in Bronze (first load 2026-11-01): 5 snapshots, 1,655 -> 1,887 -> 1,923 -> 1,954 -> 2,034 rows; key unique in each.
   New incidents per snapshot: 236, 36, 32, 81. Changed incidents: 1,651 (2024-09-04 — every one is a `reported_date`

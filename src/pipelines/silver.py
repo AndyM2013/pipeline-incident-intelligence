@@ -18,7 +18,7 @@ Design choices:
 
 import csv
 
-from pyspark.sql import Column
+from pyspark.sql import Column, Window
 from pyspark.sql import functions as F
 
 try:  # current Lakeflow Spark Declarative Pipelines API
@@ -381,4 +381,116 @@ def operator():
         F.when(F.col("operator_key").isNotNull(), "listed").when(is_phmsa, "default").alias("mapping"),
         "rationale",
         F.coalesce("incidents", F.lit(0)).alias("incidents"),
+    )
+
+
+# TSB occurrences: profiled 2026-11-05 on the 2025-06-13 archive capture; see docs/week3-gold-design.md.
+# TSB publishes each code as an id plus English and French labels; Silver keeps the English label.
+# Silver name -> Bronze name, by type.
+TSB_TEXT = {
+    "occurrence_number": "occno",
+    "occurrence_type": "occtypeid_displayeng",  # ACCIDENT / INCIDENT
+    "occurrence_class": "occclassid_displayeng",
+    "occurrence_time": "occtime",  # local wall-clock HH:mm:ss, zone in time_zone; blank in 480 rows
+    "time_zone": "timezoneid_displayeng",
+    "location": "locationid_displayeng",
+    "regional_office": "regionoccid_displayeng",
+    "operator_name": "pipelineoperatorid_displayeng",
+    "facility_name": "facilitynameid_displayeng",
+    "facility_type": "facilitytypeid_displayeng",
+    "pipeline_name": "pipelinenameid_displayeng",
+    "pipeline_type": "pipelinetypeid_displayeng",
+    "component": "componentid_displayeng",
+    "component_details": "componentdetails",
+    "product_carried": "productcarriedid_displayeng",
+    "product_type": "typeofproductid_displayeng",
+    "product_released": "productreleaseddisplayeng",
+    "detection_method": "detectionmethodid_displayeng",
+    "land_use_type": "landusetypeid_displayeng",
+    "entity_involved": "entityinvolvedid_displayeng",
+    "hazard_type": "hazardtypeid_displayeng",
+    "activity_authorized": "activityauthorizedid_displayeng",
+    "threat_to_pipeline": "threattopipelineid_displayeng",
+    "location_km_post": "locationkmpost",
+    "safety_communication_ref": "safetycommunicationrefno",
+}
+TSB_INT = {
+    "evacuated": "noevacuated",
+    "serious_injuries": "totalseriousinjuries",
+    "fatalities": "totalfatalinjuries",
+}
+TSB_DECIMAL = {  # name -> (Bronze name, type)
+    # Centroid of the nearest named place, not the occurrence position.
+    "nearest_location_latitude": ("nearestlocationlatitude", "double"),
+    "nearest_location_longitude": ("nearestlocationlongitude", "double"),
+    # The file gives no unit (up to 20,000,000, gas and liquid mixed); read the data dictionary before converting.
+    "quantity_lost": ("quantitylost", "decimal(20,8)"),
+    "quantity_recovered": ("quantityrecovered", "decimal(20,2)"),
+    "out_of_service_hours": ("outofservicehours", "decimal(10,2)"),
+    "pipeline_diameter": ("pipelinediameter", "decimal(8,2)"),
+}
+TSB_FLAG = {  # True / False -> boolean
+    "reported_by_telephone": "reportedbytelephoneind",
+    "released_from_line_pipe_body": "releasedfromlinepipebodyind",
+    "fatal_or_serious_injury": "fatalseriousinjuriesind",
+    "third_party_damage": "damagetothirdpartyind",
+    "fire": "fireind",
+    "explosion": "explosionind",
+    "product_released_flag": "productreleasedind",
+    "metallurgical_report": "metallurgicalreportind",
+    "operations_interrupted": "interruptionofpipelineopsind",
+    "evacuation": "evacuationind",
+    "rupture": "ruptureind",
+    "operation_beyond_limits": "operationbeyondlimitsind",
+    "other_transport_mode_affected": "othermodetransportaffectedind",
+    "toxic_plume": "toxicplumeind",
+    "product_left_company_property": "productleftcopropertyrowind",
+    "fugitive_emission": "fugitiveemissionind",
+    "safety_communication": "safetycommunicationind",
+    "terrain_environmental_hazard": "terrainenvironmentalhazardind",
+    "deployed": "deployedind",
+    "line_strike": "linestrikeind",
+    "significant_environmental_impact": "significantenvironmentalimpactind",
+}
+TSB_DATETIME_FORMAT = "M/d/yyyy h:mm:ss a"  # 11/16/2021 12:00:00 AM; the time part of OccDate is always midnight
+
+TSB_EXPECTATIONS = {
+    "key_format": "occurrence_number RLIKE '^P[0-9]{2}[A-Z][0-9]{4}$'",
+    "key_unique_in_snapshot": "copies = 1",  # identical repeats are collapsed first (P21H0022 x4)
+    "occurrence_date_parsed": "occurrence_date IS NOT NULL",
+    "known_occurrence_type": "occurrence_type IN ('ACCIDENT', 'INCIDENT')",  # P00Z0001 is N/A, no province
+    "province_present": "province IS NOT NULL",
+    "nearest_location_in_canada": "nearest_location_latitude IS NULL "  # 228 blank in 2025-06-13: missing, not wrong
+    "OR (nearest_location_latitude BETWEEN 41 AND 84 AND nearest_location_longitude BETWEEN -142 AND -52)",
+    "summary_present": "summary IS NOT NULL",
+}
+
+
+def true_false(col: str) -> Column:
+    return F.when(F.col(col) == "True", True).when(F.col(col) == "False", False)
+
+
+@materialized_view(
+    name="silver.tsb_occurrence_snapshot",
+    comment="TSB pipeline occurrences, one typed row per occurrence per snapshot, English labels. "
+    "Emails and phone numbers in the summary are redacted (names are not).",
+)
+@dp.expect_or_fail("occurrence_number_present", "occurrence_number IS NOT NULL")
+@dp.expect_all(TSB_EXPECTATIONS)
+def tsb_occurrence_snapshot():
+    raw = spark.read.table("tsb_occurrence_raw")  # noqa: F821
+    columns = [F.nullif(F.trim(F.col(src)), F.lit("")).alias(name) for name, src in TSB_TEXT.items()]
+    columns += [F.expr(f"try_cast({src} AS int)").alias(name) for name, src in TSB_INT.items()]
+    columns += [F.expr(f"try_cast({src} AS {t})").alias(name) for name, (src, t) in TSB_DECIMAL.items()]
+    columns += [true_false(src).alias(name) for name, src in TSB_FLAG.items()]
+    snapshot = raw.select(
+        *columns,
+        F.expr(f"to_date(try_to_timestamp(occdate, '{TSB_DATETIME_FORMAT}'))").alias("occurrence_date"),
+        F.expr(f"to_date(try_to_timestamp(reporteddate, '{TSB_DATETIME_FORMAT}'))").alias("reported_date"),
+        F.initcap(F.nullif(F.trim(F.col("provinceid_displayeng")), F.lit(""))).alias("province"),
+        redact_contacts("occsummary").alias("summary"),
+        "_snapshot_date",
+    ).distinct()  # Bronze lineage columns differ per row, so identical source rows collapse only here
+    return snapshot.withColumn(
+        "copies", F.count(F.lit(1)).over(Window.partitionBy("occurrence_number", "_snapshot_date"))
     )

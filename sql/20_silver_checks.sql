@@ -164,3 +164,33 @@ ORDER BY 1;
 SELECT 'cer' AS source, count(*) AS versions FROM pipeline_intel.silver.cer_incident
 UNION ALL
 SELECT 'phmsa', count(*) FROM pipeline_intel.silver.phmsa_incident;
+
+-- 10. TSB occurrences: one row per occurrence, nothing parseable lost. Expect silver_rows = occurrences (identical
+--     repeats collapsed: 2025-06-13 has 3,343 Bronze rows, 3,340 occurrences), repeated_keys = 0, every *_lost = 0.
+SELECT s._snapshot_date, count(*) AS silver_rows, any_value(b.occurrences) AS occurrences,
+       count_if(s.copies > 1) AS repeated_keys,
+       count_if(s.occurrence_date IS NULL) AS date_lost,
+       count_if(s.province IS NULL) AS no_province,
+       count_if(s.fire IS NULL) AS fire_unknown,
+       any_value(b.quantity_values) - count(s.quantity_lost) AS quantity_lost_lost,
+       any_value(b.latitude_values) - count(s.nearest_location_latitude) AS latitude_lost,
+       any_value(b.reported_values) - count(s.reported_date) AS reported_date_lost
+FROM pipeline_intel.silver.tsb_occurrence_snapshot s
+JOIN (SELECT _snapshot_date, count(DISTINCT occno) AS occurrences,
+             count(DISTINCT occno) FILTER (WHERE quantitylost <> '') AS quantity_values,
+             count(DISTINCT occno) FILTER (WHERE nearestlocationlatitude <> '') AS latitude_values,
+             count(DISTINCT occno) FILTER (WHERE reporteddate <> '') AS reported_values
+      FROM pipeline_intel.bronze.tsb_occurrence_raw GROUP BY 1) b USING (_snapshot_date)
+GROUP BY 1
+ORDER BY 1;
+
+-- 10b. TSB summary redaction. Expect residual_email = 0 and residual_phone = 0; 2025-06-13 had no emails or phones
+--      (5 NEB safety-order numbers look like phones and must stay: kept = 5).
+SELECT _snapshot_date,
+       count_if(summary RLIKE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+[.][A-Za-z]{2,}') AS residual_email,
+       count_if(summary RLIKE '(^|[^A-Za-z0-9])([(][0-9]{3}[)] ?|[0-9]{3}[-. ])[0-9]{3}[-.][0-9]{4}') AS residual_phone,
+       sum(size(split(summary, '\\[EMAIL\\]')) - 1) AS redacted_email,
+       sum(size(split(summary, '\\[PHONE\\]')) - 1) AS redacted_phone,
+       count_if(summary RLIKE '[A-Z]-?[A-Z][0-9]{3}-[0-9]{3}-[0-9]{4}') AS kept
+FROM pipeline_intel.silver.tsb_occurrence_snapshot
+GROUP BY 1;

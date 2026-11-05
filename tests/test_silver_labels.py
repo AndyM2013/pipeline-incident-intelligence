@@ -163,3 +163,18 @@ def test_history_does_not_diff_the_mapped_cause():
     assert added == {"taxonomy_causes", "taxonomy_cause", "taxonomy_mapping"}
     not_diffed = ast.literal_eval(re.search(r"NOT_DIFFED = (\[.*\])", (SRC.parent / "history.py").read_text()).group(1))
     assert added <= set(not_diffed)
+
+
+def test_tsb_columns_are_unique_and_english():
+    maps = [ns["TSB_TEXT"], ns["TSB_INT"], ns["TSB_DECIMAL"], ns["TSB_FLAG"]]
+    silver = [name for m in maps for name in m]
+    bronze = [src if isinstance(src, str) else src[0] for m in maps for src in m.values()]
+    assert len(silver) == len(set(silver))
+    assert len(bronze) == len(set(bronze))
+    assert not [b for b in bronze if b.endswith("displayfre")]
+
+
+def test_tsb_key_format_accepts_every_prefix_seen():
+    pattern = re.search(r"RLIKE '(.+)'", ns["TSB_EXPECTATIONS"]["key_format"]).group(1)
+    for key in ["P21H0022", "P00Z0001", "P91C0001", "P91E0003"]:
+        assert re.match(pattern, key)

@@ -2,7 +2,7 @@
 
 Status: 2026-11-05. Built: cause taxonomy (`reference/cause_taxonomy.csv`), operator map (`reference/operator_map.csv`,
 `silver.operator`), `gold.incident_fact`, PHMSA reconciliation. CER comprehensive file landed and reconciled (Bronze only, decision 4b). TSB occurrence data in Bronze (June 2025 archive copy) and reconciled by year and
-province; today's copy waits on a browser download. Open: decisions 6-7.
+province; today's copy waits on a browser download. `silver.tsb_occurrence_snapshot` built (decision 6). Open: decision 7.
 
 ## What the profile showed (2026-11-04, current snapshots)
 
@@ -213,10 +213,20 @@ compares all 832 state x year cells and the national years: 0 differences, 5,792
 5. **Published summaries.** PHMSA: scripted, done 2026-11-04 (`scripts/fetch_phmsa_trends.py`, below).
    TSB: superseded by the occurrence file, landed 2026-11-05 from the June 2025 archive copy; today's copy needs
    saving from a browser (the site refuses scripted clients).
-6. **TSB Silver.** Open. Options: (a) `silver.tsb_occurrence_snapshot` (typed, deduplicated, `OccSummary` with emails
-   and phones redacted like PHMSA) so TSB narratives can join the Week 4 `ai_mask` pass and later retrieval;
-   (b) Bronze only, reconciliation by count. Recommended: (a), once today's copy is landed.
-7. **TSB-CER link.** Open. A dated, rule-based match (date, province, operator) would attach CER coded causes to TSB
+6. **TSB Silver.** Options were (a) `silver.tsb_occurrence_snapshot` (typed, deduplicated, `OccSummary` with emails
+   and phones redacted like PHMSA) so TSB narratives can join the Week 4 `ai_mask` pass and later retrieval, or
+   (b) Bronze only. Decided 2026-11-05: (a); built on the 2025-06-13 capture, today's copy becomes a second snapshot.
+   - 61 columns: English labels only (no ids, no French), `True`/`False` indicators as booleans, `occurrence_date`
+     as a date with `occurrence_time` and `time_zone` apart, `summary` = redacted `OccSummary`.
+   - Identical repeated rows collapse (3,343 Bronze rows -> 3,340); `copies` and `key_unique_in_snapshot` catch a
+     key repeated with different values.
+   - Coordinates are the nearest named place (`nearest_location_*`), not the occurrence position; 228 blank.
+   - `quantity_lost` / `quantity_recovered` carry no unit until the data dictionary is landed.
+   - Checks 10-10b (`sql/20`) pass: nothing parseable lost, 0 emails, 0 phones, the 5 safety-order numbers kept.
+     Expectations fail only where the profile said: 5 without a summary, P00Z0001 (type N/A, no province).
+   - No SCD2 yet: with one snapshot there is no history. Add a `silver.tsb_occurrence` flow in `incident_history`
+     once a second snapshot lands, if versions are needed.
+7. **TSB-CER link.** Open, after decision 6. A dated, rule-based match (date, province, operator) would attach CER coded causes to TSB
    narratives: a Canadian evaluation set for cause extraction. Needs its own design: match rules, ambiguous
    candidates, and a manual review sample before any score uses it.
 
