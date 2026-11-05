@@ -54,8 +54,8 @@ Serverless only; one active pipeline per type; one Vector Search endpoint; daily
   `bronze.cer_comprehensive_raw`; today's 16-column file landed as snapshot 6 (15 new versions). `sql/25` checks 2-2b:
   the two files hold the same incidents and identical shared values (only the `reported_date` format differs).
   Its "Detailed what/why happened" columns turned out to be cause sub-codes, not narratives (review log).
-- Next: decision 4b (Silver for the comprehensive file, or leave it in Bronze); TSB 2025 tables (saved from a browser).
-  Then Week 4: `ai_mask` name pass over PHMSA narratives, before any extraction.
+- 2026-11-05: Decision 4b: the comprehensive file stays in Bronze until a use needs it (no Silver view).
+- Next: TSB 2025 tables (saved from a browser). Then Week 4: `ai_mask` name pass over PHMSA narratives, before any extraction.
 - Plan and weekly checklist: `docs/project-plan.md` (tick boxes there as work lands).
 
 ## Workflow

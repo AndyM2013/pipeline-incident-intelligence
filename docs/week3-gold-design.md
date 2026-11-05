@@ -1,7 +1,7 @@
 # Week 3 design — conformance: units, operators, `gold.incident_fact`
 
-Status: 2026-11-04. Built: cause taxonomy (`reference/cause_taxonomy.csv`), operator map (`reference/operator_map.csv`,
-`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. CER comprehensive file landed and reconciled (Bronze only; Silver waits on decision 4b). Open: TSB 2025.
+Status: 2026-11-05. Built: cause taxonomy (`reference/cause_taxonomy.csv`), operator map (`reference/operator_map.csv`,
+`silver.operator`), `gold.incident_fact`, PHMSA reconciliation. CER comprehensive file landed and reconciled (Bronze only, decision 4b). Open: TSB 2025.
 
 ## What the profile showed (2026-11-04, current snapshots)
 
@@ -172,9 +172,11 @@ compares all 832 state x year cells and the national years: 0 differences, 5,792
 4. **CER comprehensive file.** Decided 2026-11-04: add it as a second CER source, keep the 16-column file and its
    history, land the comprehensive file and its 5 archive captures as `cer_comprehensive/<date>/`, reconcile the two.
    Done 2026-11-04 (Bronze and reconciliation).
-4b. **Silver for the comprehensive file: open.** The decision above assumed narratives, which it does not have.
-   Options: (a) a narrow `silver.cer_incident_detail` snapshot view (occurrence datetime, counts, detailed cause
-   codes, pipe attributes) joined to the 16-column history by key; (b) leave it in Bronze until a use needs it.
+4b. **Silver for the comprehensive file.** The decision above assumed narratives, which it does not have.
+   Options were (a) a narrow `silver.cer_incident_detail` snapshot view (occurrence datetime, counts, detailed cause
+   codes, pipe attributes) joined to the 16-column history by key, or (b) leave it in Bronze until a use needs it.
+   Decided 2026-11-05: (b). Nothing in Weeks 4-7 reads it; Bronze keeps every snapshot and rebuilds from the Volume.
+   Revisit if Gold needs CER occurrence time instead of reported date, or the agent needs fatality / injury counts.
 5. **Published summaries.** PHMSA: scripted, done 2026-11-04 (`scripts/fetch_phmsa_trends.py`, below).
    TSB 2025: still needs saving from a browser.
 

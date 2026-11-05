@@ -39,7 +39,7 @@ SOURCES = {
     },
     "cer_comprehensive": {
         "table": "cer_comprehensive_raw",
-        "comment": "CER incidents, comprehensive file (102 columns incl. short narratives); raw text columns per snapshot.",
+        "comment": "CER incidents, comprehensive file (102 columns; detailed cause codes, no narratives); raw text columns per snapshot.",
         "glob": "*.csv",
         "options": {  # checked 2026-11-04 on 6 snapshots: same header, windows-1252, no line breaks in fields
             "header": "true",
