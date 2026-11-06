@@ -159,6 +159,8 @@ gateway (summary pages, CSVs and `robots.txt`), and we do not disguise the clien
   dictionary is not archived.
 - Today's copy is saved from a browser and landed with `scripts/fetch_snapshots.py --source tsb --from-dir <dir>`
   (same manifest, same dated folder; the date defaults to today).
+  `--browser` does the clicking: it opens each link in the user's own browser, waits for the finished download in
+  `~/Downloads` (ignoring partial `.crdownload` / `.download` / `.part` files and older copies), then lands it.
 - The injuries file is not landed: the occurrence file has `TotalFatalInjuries` / `TotalSeriousInjuries`.
 
 Profile of the 2025-06-13 capture, read in `bronze.tsb_occurrence_raw`: UTF-8 with BOM (not windows-1252 like CER),

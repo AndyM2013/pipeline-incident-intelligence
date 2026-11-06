@@ -64,3 +64,21 @@ def test_missing_saved_file_fails_loudly(tmp_path):
     spec = {"files": [{"url": "https://example.org/x/occ.csv", "role": "data"}]}
     with pytest.raises(FileNotFoundError):
         fs.collect("tsb", spec, None, "2026-11-05", from_dir=tmp_path)
+
+
+def test_finished_download_takes_the_newest_complete_copy(tmp_path):
+    import os
+    old = tmp_path / "occ.csv"
+    old.write_text("old")
+    os.utime(old, (1000, 1000))  # saved before this run: ignored
+    new = tmp_path / "occ (1).csv"
+    new.write_text("new")
+    (tmp_path / "other.csv").write_text("x")
+    assert fs.finished_download(tmp_path, "occ.csv", since=2000) == new
+
+
+def test_finished_download_waits_while_the_browser_is_writing(tmp_path):
+    (tmp_path / "occ.csv").write_text("partial")
+    (tmp_path / "occ.csv.crdownload").write_text("")
+    assert fs.finished_download(tmp_path, "occ.csv", since=0) is None
+    assert fs.finished_download(tmp_path, "missing.csv", since=0) is None

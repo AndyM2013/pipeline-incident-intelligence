@@ -10,6 +10,8 @@ Runs on your own machine (Free Edition notebooks can only reach a short list of 
     python scripts/fetch_snapshots.py --source tsb --from-dir ~/Downloads
                                                               # files saved from a browser (sites that refuse
                                                               # scripted clients); dated today, or --date
+    python scripts/fetch_snapshots.py --source tsb --browser  # the same, but opens each link in your own browser
+                                                              # and waits for the download in ~/Downloads
     python scripts/fetch_snapshots.py --no-upload             # download only, upload later
     python scripts/fetch_snapshots.py --profile DEFAULT       # pick a CLI profile when several match the workspace
 
@@ -32,6 +34,8 @@ import json
 import re
 import subprocess
 import sys
+import time
+import webbrowser
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -116,11 +120,49 @@ def read_saved(directory: Path, name: str) -> bytes:
     return path.read_bytes()
 
 
-def collect(source: str, spec: dict, wayback: str | None, today: str, from_dir: Path | None = None) -> list[Landed]:
+PARTIAL_SUFFIXES = (".crdownload", ".download", ".part")  # Chrome, Safari, Firefox while a download runs
+
+
+def finished_download(directory: Path, name: str, since: float) -> Path | None:
+    """Newest complete download of `name` started after `since`; browsers rename repeats to `x (1).csv`."""
+    stem, suffix = Path(name).stem, Path(name).suffix
+    pattern = re.compile(rf"^{re.escape(stem)}(?: ?\(\d+\)|-\d+)?{re.escape(suffix)}$")
+    candidates = [p for p in directory.iterdir() if pattern.match(p.name) and p.stat().st_mtime >= since]
+    if not candidates:
+        return None
+    newest = max(candidates, key=lambda p: p.stat().st_mtime)
+    if any(newest.with_name(newest.name + s).exists() for s in PARTIAL_SUFFIXES):
+        return None
+    return newest
+
+
+def download_in_browser(url: str, name: str, directory: Path, timeout: int = 600) -> bytes:
+    """Open the link in the user's own browser and wait for the file it saves. No client is disguised:
+    the person's browser makes the request, as if they had clicked the link on the source page."""
+    directory = directory.expanduser()
+    since = time.time() - 1
+    print(f"open   {url}  (waiting for {name} in {directory})")
+    webbrowser.open(url)
+    deadline, last_size = since + timeout, -1
+    while time.time() < deadline:
+        found = finished_download(directory, name, since)
+        if found:
+            size = found.stat().st_size
+            if size == last_size and size > 0:  # unchanged across two polls: the browser is done writing
+                return found.read_bytes()
+            last_size = size
+        time.sleep(2)
+    raise TimeoutError(f"{name} did not appear in {directory} within {timeout}s")
+
+
+def collect(source: str, spec: dict, wayback: str | None, today: str, from_dir: Path | None = None,
+            browser: bool = False) -> list[Landed]:
     landed: list[Landed] = []
     for f in spec["files"]:
         name = Path(f["url"].split("?")[0]).name
-        if from_dir:
+        if browser:
+            content, archived_date = download_in_browser(f["url"], name, from_dir or Path("~/Downloads")), None
+        elif from_dir:
             content, archived_date = read_saved(from_dir, name), None
         else:
             try:
@@ -156,14 +198,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--source", action="append", help="Source key from sources.json (repeatable). Default: all.")
     parser.add_argument("--wayback", metavar="YYYYMMDD", help="Fetch the Internet Archive capture nearest this date.")
     parser.add_argument("--from-dir", type=Path, help="Read files saved from a browser here instead of downloading.")
+    parser.add_argument("--browser", action="store_true",
+                        help="Open each link in your browser and land what it saves (in --from-dir, default ~/Downloads).")
     parser.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date for --from-dir (default: today).")
     parser.add_argument("--catalog", default="pipeline_intel")
     parser.add_argument("--profile", help="Databricks CLI profile (from ~/.databrickscfg) used for uploads.")
     parser.add_argument("--no-upload", action="store_true", help="Write locally only.")
     parser.add_argument("--force", action="store_true", help="Land files even if identical content was seen before.")
     args = parser.parse_args(argv)
-    if args.from_dir and args.wayback:
-        parser.error("--from-dir and --wayback are exclusive")
+    if (args.from_dir or args.browser) and args.wayback:
+        parser.error("--from-dir / --browser and --wayback are exclusive")
     if args.date and not args.from_dir:
         parser.error("--date only applies to --from-dir")
 
@@ -178,7 +222,7 @@ def main(argv: list[str] | None = None) -> int:
     landed_count = 0
 
     for source in wanted:
-        for item in collect(source, sources[source], args.wayback, today, args.from_dir):
+        for item in collect(source, sources[source], args.wayback, today, args.from_dir, args.browser):
             if not args.force and already_recorded(manifest, item):
                 print(f"skip   {item.relative_path}  (same content as an earlier snapshot)")
                 continue
